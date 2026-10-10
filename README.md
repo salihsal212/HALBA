@@ -2,10 +2,10 @@
 
 A real, deployable social app: login, profiles, and posting with photos and
 video. Free to run: **Supabase** (database + login + file storage) +
-**GitHub Pages** (hosting) + **GitHub Actions** (builds the Android APK).
+**Cloudflare Pages** (hosting) + **GitHub Actions** (builds the Android APK).
 
 ```
-Web app  ->  GitHub Pages (free)
+Web app  ->  Cloudflare Pages (free)  https://halba.pages.dev
 Backend  ->  Supabase free tier (auth, Postgres, 1GB storage, 50MB/file)
 Android  ->  APK built automatically by GitHub Actions (free)
 ```
@@ -36,18 +36,19 @@ python -m http.server 8000
 # open http://localhost:8000
 ```
 
-## 3. Deploy the web app (GitHub Pages)
+## 3. Deploy the web app (Cloudflare Pages)
 
-1. Create a new GitHub repository (e.g. `halba`) and push this folder to it
-   (`main` branch).
-2. Repo → **Settings → Pages** → Source: **Deploy from a branch** →
-   Branch: `main`, folder `/ (root)` → Save.
-3. Your app is live at `https://<your-username>.github.io/halba/`.
-   On a phone, the browser will offer **Add to Home screen** — that installs
-   it like an app (PWA).
+Already set up: the GitHub repo is connected to Cloudflare Pages, so
+**every push to `main` redeploys the site automatically** in ~30 seconds.
 
-> Supabase CORS: no setup needed — the anon key works from any origin by
-> default.
+- Live URL: **https://halba.pages.dev**
+- Build command: none. Output directory: `/` (root).
+- Custom domain later: Cloudflare dashboard → Workers & Pages → halba →
+  Custom domains.
+- On a phone, the browser offers **Add to Home screen** — that installs it
+  like an app (PWA).
+
+> Supabase CORS: no setup needed — the publishable key works from any origin.
 
 ## 4. Get the Android APK
 
