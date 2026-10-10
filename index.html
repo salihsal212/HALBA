@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1B2350">
+<title>HALBA</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- ======================= AUTH ======================= -->
+<section id="view-auth" class="view" hidden>
+  <div class="auth-wrap">
+    <header class="auth-hero">
+      <div class="wordmark">HALBA<span class="wordmark-dot">.</span></div>
+      <p class="auth-tag">The arena where talent gets seen.</p>
+    </header>
+
+    <form id="form-login" class="card auth-card">
+      <h2>Log in</h2>
+      <label>Email
+        <input type="email" name="email" autocomplete="email" required>
+      </label>
+      <label>Password
+        <input type="password" name="password" autocomplete="current-password" required minlength="6">
+      </label>
+      <button type="submit" class="btn btn-primary">Log in</button>
+      <p class="switch-line">New to the arena?
+        <button type="button" class="linklike" id="show-signup">Create an account</button>
+      </p>
+    </form>
+
+    <form id="form-signup" class="card auth-card" hidden>
+      <h2>Create your profile</h2>
+      <label>Full name
+        <input type="text" name="name" autocomplete="name" required maxlength="60">
+      </label>
+      <div class="grid-2">
+        <label>City
+          <input type="text" name="city" placeholder="Kuwait City" required maxlength="40">
+        </label>
+        <label>Your skill
+          <input type="text" name="skill" placeholder="Football" required maxlength="40">
+        </label>
+      </div>
+      <label>Email
+        <input type="email" name="email" autocomplete="email" required>
+      </label>
+      <label>Password
+        <input type="password" name="password" autocomplete="new-password" required minlength="6">
+      </label>
+      <button type="submit" class="btn btn-primary">Join HALBA</button>
+      <p class="switch-line">Already have an account?
+        <button type="button" class="linklike" id="show-login">Log in</button>
+      </p>
+    </form>
+
+    <p id="auth-msg" class="msg" role="status"></p>
+  </div>
+</section>
+
+<!-- ======================= APP SHELL ======================= -->
+<div id="app-shell" hidden>
+  <header class="topbar">
+    <div class="wordmark wordmark-sm">HALBA<span class="wordmark-dot">.</span></div>
+    <span id="topbar-skill" class="chip chip-skill"></span>
+  </header>
+
+  <!-- FEED -->
+  <main id="view-feed" class="view" hidden>
+    <div id="feed-list" class="feed"></div>
+    <p id="feed-empty" class="empty" hidden>
+      The arena is quiet. Be the first to post your skill.
+    </p>
+  </main>
+
+  <!-- COMPOSE -->
+  <main id="view-compose" class="view" hidden>
+    <form id="form-post" class="card compose-card">
+      <h2>Show your skill</h2>
+      <label>What did you do?
+        <textarea name="caption" rows="3" maxlength="500"
+          placeholder="50m freestyle in 29.4s at the school pool…" required></textarea>
+      </label>
+      <label class="file-label">
+        <input type="file" name="media" accept="image/*,video/*">
+        <span id="file-name">Add a photo or video (optional)</span>
+      </label>
+      <div id="compose-preview" class="compose-preview" hidden></div>
+      <button type="submit" class="btn btn-primary" id="btn-publish">Post to the arena</button>
+      <p id="compose-msg" class="msg" role="status"></p>
+    </form>
+  </main>
+
+  <!-- PROFILE -->
+  <main id="view-profile" class="view" hidden>
+    <div class="card profile-card">
+      <div class="profile-head">
+        <div class="avatar" id="profile-avatar"></div>
+        <div>
+          <h2 id="profile-name"></h2>
+          <p id="profile-meta" class="profile-meta"></p>
+        </div>
+      </div>
+      <div class="profile-stats">
+        <div><strong id="stat-posts">0</strong><span>posts</span></div>
+        <div><strong id="stat-likes">0</strong><span>likes earned</span></div>
+      </div>
+      <button id="btn-logout" class="btn btn-ghost">Log out</button>
+    </div>
+    <h3 class="section-title">My posts</h3>
+    <div id="profile-posts" class="feed"></div>
+  </main>
+
+  <nav class="bottomnav">
+    <button data-nav="feed" class="nav-btn is-active" aria-label="Arena feed">
+      <svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
+      <span>Arena</span>
+    </button>
+    <button data-nav="compose" class="nav-btn nav-post" aria-label="New post">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="2.6" stroke-linecap="round"/></svg>
+      <span>Post</span>
+    </button>
+    <button data-nav="profile" class="nav-btn" aria-label="My profile">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 20c1.8-3.4 4.6-5 8-5s6.2 1.6 8 5"/></svg>
+      <span>Me</span>
+    </button>
+  </nav>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

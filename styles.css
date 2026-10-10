@@ -1,0 +1,200 @@
+/* HALBA — arena for talent. Navy base, coral action, gold = achievement only. */
+:root {
+  --navy: #1B2350;
+  --navy-2: #2F3C7E;
+  --coral: #F96167;
+  --coral-deep: #E04A50;
+  --gold: #F2C94C;
+  --paper: #F7F7FA;
+  --surface: #FFFFFF;
+  --ink: #23263A;
+  --mute: #6A6E85;
+  --line: #E4E6F0;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: "Cairo", system-ui, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font: inherit; cursor: pointer; }
+input, textarea { font: inherit; }
+[hidden] { display: none !important; }
+
+/* ---------- wordmark ---------- */
+.wordmark {
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  font-size: 2.6rem;
+  color: #fff;
+}
+.wordmark-dot { color: var(--coral); }
+.wordmark-sm { font-size: 1.25rem; color: #fff; }
+
+/* ---------- auth ---------- */
+#view-auth {
+  min-height: 100dvh;
+  background:
+    radial-gradient(1200px 500px at 85% -10%, var(--navy-2), transparent 60%),
+    var(--navy);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 0 16px calc(32px + env(safe-area-inset-bottom));
+}
+.auth-wrap { width: 100%; max-width: 440px; }
+.auth-hero { padding: 56px 4px 20px; }
+.auth-tag { color: #C9CFEA; margin: 2px 0 0; font-size: 1.02rem; }
+
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  border: 1px solid var(--line);
+}
+.auth-card h2 { margin: 0 0 12px; font-size: 1.25rem; }
+.auth-card label { display: block; margin-bottom: 12px; font-weight: 600; font-size: 0.92rem; }
+.auth-card input, .compose-card input[type="text"], .compose-card textarea {
+  display: block; width: 100%;
+  margin-top: 5px; padding: 11px 12px;
+  border: 1.5px solid var(--line); border-radius: 10px;
+  background: #FBFBFD;
+}
+.auth-card input:focus, .compose-card textarea:focus {
+  outline: none; border-color: var(--navy-2);
+}
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.btn {
+  display: block; width: 100%;
+  border: none; border-radius: 10px;
+  padding: 12px 16px; font-weight: 800; font-size: 1rem;
+}
+.btn-primary { background: var(--coral); color: #fff; }
+.btn-primary:active { background: var(--coral-deep); }
+.btn-primary:disabled { opacity: 0.6; }
+.btn-ghost {
+  background: transparent; color: var(--navy-2);
+  border: 1.5px solid var(--line); margin-top: 14px;
+}
+.linklike {
+  background: none; border: none; padding: 0;
+  color: var(--coral-deep); font-weight: 700; text-decoration: underline;
+}
+.switch-line { margin: 12px 0 0; font-size: 0.92rem; color: var(--mute); }
+.msg { min-height: 1.4em; font-size: 0.92rem; color: #FFD9DB; padding: 8px 4px 0; }
+#compose-msg { color: var(--coral-deep); }
+
+/* ---------- app shell ---------- */
+.topbar {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--navy);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: calc(10px + env(safe-area-inset-top)) 16px 10px;
+}
+.chip {
+  font-size: 0.78rem; font-weight: 700;
+  padding: 3px 10px; border-radius: 99px;
+}
+.chip-skill { background: var(--navy-2); color: #fff; }
+
+.view { padding: 16px 16px calc(84px + env(safe-area-inset-bottom)); }
+#view-feed, #view-compose, #view-profile { max-width: 560px; margin: 0 auto; }
+
+/* ---------- feed ---------- */
+.feed { display: flex; flex-direction: column; gap: 14px; }
+.post { overflow: hidden; }
+.post-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px 0;
+}
+.avatar {
+  width: 40px; height: 40px; flex: none;
+  border-radius: 50%;
+  background: var(--navy-2); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800;
+}
+.post-who strong { display: block; line-height: 1.2; }
+.post-who small { color: var(--mute); }
+.post-skill {
+  margin-left: auto;
+  background: #EFF1FA; color: var(--navy-2);
+}
+.post-caption { padding: 8px 14px; margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+.post-media { width: 100%; display: block; background: #000; max-height: 70vh; object-fit: contain; }
+.post-foot {
+  display: flex; align-items: center; gap: 14px;
+  padding: 10px 14px;
+}
+.like-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; color: var(--mute); font-weight: 700;
+}
+.like-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; }
+.like-btn.is-liked { color: var(--coral-deep); }
+.like-btn.is-liked svg { fill: var(--coral-deep); stroke: var(--coral-deep); }
+.post-del {
+  margin-left: auto; background: none; border: none;
+  color: var(--mute); font-size: 0.85rem; text-decoration: underline;
+}
+.empty { text-align: center; color: var(--mute); padding: 48px 20px; }
+
+/* ---------- compose ---------- */
+.compose-card h2 { margin: 0 0 12px; }
+.compose-card label { display: block; font-weight: 600; font-size: 0.92rem; margin-bottom: 12px; }
+.file-label {
+  display: block; border: 1.5px dashed var(--navy-2); border-radius: 10px;
+  padding: 14px; text-align: center; color: var(--navy-2); font-weight: 700;
+}
+.file-label input { display: none; }
+.compose-preview img, .compose-preview video {
+  width: 100%; border-radius: 10px; margin-bottom: 12px; max-height: 320px; object-fit: contain; background: #000;
+}
+
+/* ---------- profile ---------- */
+.profile-head { display: flex; gap: 12px; align-items: center; }
+.profile-head .avatar { width: 56px; height: 56px; font-size: 1.3rem; }
+.profile-head h2 { margin: 0; font-size: 1.2rem; }
+.profile-meta { margin: 2px 0 0; color: var(--mute); font-size: 0.92rem; }
+.profile-stats {
+  display: flex; gap: 28px; margin-top: 16px;
+  padding-top: 14px; border-top: 1px solid var(--line);
+}
+.profile-stats strong { font-size: 1.4rem; display: block; line-height: 1.1; }
+.profile-stats span { color: var(--mute); font-size: 0.85rem; }
+.section-title { margin: 20px 2px 10px; font-size: 1.02rem; }
+
+/* ---------- bottom nav ---------- */
+.bottomnav {
+  position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+  display: flex; justify-content: space-around;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+}
+.nav-btn {
+  background: none; border: none;
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  color: var(--mute); font-size: 0.72rem; font-weight: 700;
+  padding: 4px 18px; border-radius: 10px;
+}
+.nav-btn svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.nav-btn.is-active { color: var(--navy-2); }
+.nav-post svg { stroke: #fff; }
+.nav-post {
+  background: var(--coral); color: #fff;
+}
+.nav-btn:focus-visible { outline: 2px solid var(--navy-2); outline-offset: 2px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .post { animation: rise 0.25s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } }
+}

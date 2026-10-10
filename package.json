@@ -1,0 +1,14 @@
+{
+  "name": "halba",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HALBA - the arena where talent gets seen",
+  "scripts": {
+    "prepare:www": "node scripts/copy-www.js"
+  },
+  "devDependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2"
+  }
+}
