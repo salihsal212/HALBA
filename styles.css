@@ -28,15 +28,10 @@ button { font: inherit; cursor: pointer; }
 input, textarea { font: inherit; }
 [hidden] { display: none !important; }
 
-/* ---------- wordmark ---------- */
-.wordmark {
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  font-size: 2.6rem;
-  color: #fff;
-}
-.wordmark-dot { color: var(--coral); }
-.wordmark-sm { font-size: 1.25rem; color: #fff; }
+/* ---------- logo ---------- */
+.logo { display: block; height: auto; }
+.logo-hero { width: min(260px, 70%); }
+.logo-bar { width: 118px; }
 
 /* ---------- auth ---------- */
 #view-auth {

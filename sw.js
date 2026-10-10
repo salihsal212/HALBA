@@ -1,8 +1,9 @@
 /* HALBA service worker — app-shell cache so the app opens instantly.
    Feed data always comes from the network (it's live content). */
-var CACHE = "halba-shell-v1";
+var CACHE = "halba-shell-v2";
 var SHELL = ["./", "index.html", "styles.css", "app.js", "config.js",
-  "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png"];
+  "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png",
+  "icons/favicon-32.png", "brand/logo-horizontal-white.svg"];
 
 self.addEventListener("install", function (e) {
   e.waitUntil(caches.open(CACHE).then(function (c) { return c.addAll(SHELL); }));
