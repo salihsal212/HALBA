@@ -119,10 +119,38 @@
   });
 
   // ---------- feed ----------
+  var KINDS = {
+    appreciate: { label: "Appreciate", hint: "Tell them what you loved" },
+    suggest:    { label: "Suggest",    hint: "One thing that would make this better" },
+    ask:        { label: "Ask",        hint: "Ask how they did it" }
+  };
+
+  function commentRow(c) {
+    var prof = c.profiles || {};
+    var row = document.createElement("div");
+    row.className = "comment";
+    row.innerHTML =
+      '<div class="avatar avatar-sm">' + esc(initials(prof.name)) + "</div>" +
+      '<div class="comment-body">' +
+        '<div class="comment-meta"><strong>' + esc(prof.name || "Someone") + "</strong>" +
+        '<span class="kind kind-' + esc(c.kind) + '">' + esc(KINDS[c.kind] ? KINDS[c.kind].label : c.kind) + "</span>" +
+        "<small>" + timeAgo(c.created_at) + "</small></div>" +
+        '<p>' + esc(c.body) + "</p>" +
+      "</div>" +
+      (me && c.user_id === me.id ? '<button class="comment-del" aria-label="Delete comment">×</button>' : "");
+    var del = row.querySelector(".comment-del");
+    if (del) del.addEventListener("click", async function () {
+      await sb.from("comments").delete().eq("id", c.id);
+      row.remove();
+    });
+    return row;
+  }
+
   function postCard(p, opts) {
     var prof = p.profiles || {};
-    var likes = p.likes || [];
-    var liked = me && likes.some(function (l) { return l.user_id === me.id; });
+    var claps = p.claps || [];
+    var clapped = me && claps.some(function (l) { return l.user_id === me.id; });
+    var commentCount = (p.comments && p.comments.length) || 0;
     var card = document.createElement("article");
     card.className = "card post";
     card.dataset.id = p.id;
@@ -144,24 +172,99 @@
       '<p class="post-caption">' + esc(p.caption) + "</p>" +
       mediaHtml +
       '<div class="post-foot">' +
-        '<button class="like-btn' + (liked ? " is-liked" : "") + '">' +
-          '<svg viewBox="0 0 24 24"><path d="M12 20.5C7 16.5 3.5 13.3 3.5 9.8 3.5 7.2 5.5 5 8 5c1.6 0 3 .8 4 2.1C13 5.8 14.4 5 16 5c2.5 0 4.5 2.2 4.5 4.8 0 3.5-3.5 6.7-8.5 10.7z"/></svg>' +
-          '<span class="like-count">' + likes.length + "</span>" +
+        '<button class="clap-btn' + (clapped ? " is-clapped" : "") + '" aria-label="Clap">' +
+          '<span class="clap-ico" aria-hidden="true">👏</span>' +
+          '<span class="clap-count">' + claps.length + "</span>" +
+        "</button>" +
+        '<button class="comments-btn" aria-expanded="false">' +
+          '<svg viewBox="0 0 24 24"><path d="M4 5h16v11H8l-4 4z"/></svg>' +
+          '<span class="comment-count">' + commentCount + "</span>" +
         "</button>" +
         (opts && opts.canDelete ? '<button class="post-del">Delete</button>' : "") +
-      "</div>";
+      "</div>" +
+      '<section class="comments" hidden>' +
+        '<div class="comment-list"></div>' +
+        '<form class="comment-form">' +
+          '<div class="kind-picker" role="radiogroup" aria-label="Comment type">' +
+            '<button type="button" class="kind kind-appreciate is-on" data-kind="appreciate" aria-pressed="true">Appreciate</button>' +
+            '<button type="button" class="kind kind-suggest" data-kind="suggest" aria-pressed="false">Suggest</button>' +
+            '<button type="button" class="kind kind-ask" data-kind="ask" aria-pressed="false">Ask</button>' +
+          "</div>" +
+          '<div class="comment-input">' +
+            '<input type="text" name="body" maxlength="300" placeholder="' + KINDS.appreciate.hint + '" required>' +
+            '<button type="submit" class="btn-send" aria-label="Send">Send</button>' +
+          "</div>" +
+        "</form>" +
+      "</section>";
 
-    card.querySelector(".like-btn").addEventListener("click", async function () {
-      var btn = this, count = btn.querySelector(".like-count");
-      if (btn.classList.contains("is-liked")) {
-        btn.classList.remove("is-liked");
+    // clap (one per person, toggles)
+    card.querySelector(".clap-btn").addEventListener("click", async function () {
+      var btn = this, count = btn.querySelector(".clap-count");
+      if (btn.classList.contains("is-clapped")) {
+        btn.classList.remove("is-clapped");
         count.textContent = Math.max(0, +count.textContent - 1);
-        await sb.from("likes").delete().match({ post_id: p.id, user_id: me.id });
+        await sb.from("claps").delete().match({ post_id: p.id, user_id: me.id });
       } else {
-        btn.classList.add("is-liked");
+        btn.classList.add("is-clapped", "pop");
+        setTimeout(function () { btn.classList.remove("pop"); }, 350);
         count.textContent = +count.textContent + 1;
-        await sb.from("likes").insert({ post_id: p.id, user_id: me.id });
+        await sb.from("claps").insert({ post_id: p.id, user_id: me.id });
       }
+    });
+
+    // comments: open/close + load
+    var section = card.querySelector(".comments");
+    var listEl = card.querySelector(".comment-list");
+    var loaded = false;
+    async function loadComments() {
+      var res = await sb.from("comments")
+        .select("*, profiles(name)")
+        .eq("post_id", p.id)
+        .order("created_at", { ascending: true });
+      listEl.innerHTML = "";
+      (res.data || []).forEach(function (c) { listEl.appendChild(commentRow(c)); });
+      loaded = true;
+    }
+    card.querySelector(".comments-btn").addEventListener("click", async function () {
+      var open = !section.hidden;
+      section.hidden = open;
+      this.setAttribute("aria-expanded", String(!open));
+      if (!open && !loaded) await loadComments();
+      if (!open) card.querySelector('.comment-form input').focus();
+    });
+
+    // kind picker
+    var form = card.querySelector(".comment-form");
+    var kind = "appreciate";
+    form.querySelectorAll(".kind-picker .kind").forEach(function (b) {
+      b.addEventListener("click", function () {
+        kind = b.dataset.kind;
+        form.querySelectorAll(".kind-picker .kind").forEach(function (x) {
+          var on = x === b;
+          x.classList.toggle("is-on", on);
+          x.setAttribute("aria-pressed", String(on));
+        });
+        form.body.placeholder = KINDS[kind].hint;
+        form.body.focus();
+      });
+    });
+
+    // submit comment
+    form.addEventListener("submit", async function (e) {
+      e.preventDefault();
+      var body = form.body.value.trim();
+      if (!body) return;
+      var sendBtn = form.querySelector(".btn-send");
+      sendBtn.disabled = true;
+      var ins = await sb.from("comments")
+        .insert({ post_id: p.id, user_id: me.id, kind: kind, body: body })
+        .select("*, profiles(name)").single();
+      sendBtn.disabled = false;
+      if (ins.error) { form.body.placeholder = "Couldn't send. Try again."; return; }
+      listEl.appendChild(commentRow(ins.data));
+      form.body.value = "";
+      var cc = card.querySelector(".comment-count");
+      cc.textContent = +cc.textContent + 1;
     });
 
     var del = card.querySelector(".post-del");
@@ -176,7 +279,7 @@
 
   async function loadFeed() {
     var res = await sb.from("posts")
-      .select("*, profiles(name, city, skill), likes(user_id)")
+      .select("*, profiles(name, city, skill), claps(user_id), comments(id)")
       .order("created_at", { ascending: false })
       .limit(50);
     var list = $("feed-list");
@@ -256,13 +359,13 @@
       (myProfile.skill || "—") + " · " + (myProfile.city || "—");
 
     var res = await sb.from("posts")
-      .select("*, profiles(name, city, skill), likes(user_id)")
+      .select("*, profiles(name, city, skill), claps(user_id), comments(id)")
       .eq("user_id", me.id)
       .order("created_at", { ascending: false });
     var rows = res.data || [];
     $("stat-posts").textContent = rows.length;
-    $("stat-likes").textContent = rows.reduce(function (n, p) {
-      return n + (p.likes ? p.likes.length : 0);
+    $("stat-claps").textContent = rows.reduce(function (n, p) {
+      return n + (p.claps ? p.claps.length : 0);
     }, 0);
     var list = $("profile-posts");
     list.innerHTML = "";

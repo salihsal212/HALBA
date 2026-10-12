@@ -76,6 +76,7 @@ Notes:
 | `index.html` / `styles.css` / `app.js` | The whole app (no build step) |
 | `config.js` | Your Supabase URL + anon key (the only file you must edit) |
 | `supabase/schema.sql` | Database tables, security policies, storage bucket |
+| `supabase/migration-002-claps-comments.sql` | Claps + typed comments (already applied to the live project) |
 | `manifest.webmanifest` / `sw.js` / `icons/` | PWA: installable, instant-open |
 | `capacitor.config.json` / `package.json` / `scripts/copy-www.js` | Android wrapper |
 | `.github/workflows/android-apk.yml` | Cloud APK builder |
@@ -84,7 +85,8 @@ Notes:
 
 - Email + password signup with name, city, and skill
 - Feed of all posts, newest first (text, photo, or video ≤ 50MB)
-- Like / unlike; delete your own posts
+- Clap (one per person) on posts; delete your own posts
+- Typed comments — Appreciate, Suggest, or Ask — so fans, peers, and learners each have a way in
 - Profile page with post count and likes earned
 - Row-level security: users can only write as themselves; everyone can read
 
