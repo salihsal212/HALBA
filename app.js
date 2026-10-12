@@ -279,7 +279,7 @@
 
   async function loadFeed() {
     var res = await sb.from("posts")
-      .select("*, profiles(name, city, skill), claps(user_id), comments(id)")
+      .select("*, profiles!posts_user_id_fkey(name, city, skill), claps(user_id), comments(id)")
       .order("created_at", { ascending: false })
       .limit(50);
     var list = $("feed-list");
@@ -365,7 +365,7 @@
       (myProfile.skill || "—") + " · " + (myProfile.city || "—");
 
     var res = await sb.from("posts")
-      .select("*, profiles(name, city, skill), claps(user_id), comments(id)")
+      .select("*, profiles!posts_user_id_fkey(name, city, skill), claps(user_id), comments(id)")
       .eq("user_id", me.id)
       .order("created_at", { ascending: false });
     var rows = res.data || [];
