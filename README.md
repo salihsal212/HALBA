@@ -76,7 +76,8 @@ Notes:
 | `index.html` / `styles.css` / `app.js` | The whole app (no build step) |
 | `config.js` | Your Supabase URL + anon key (the only file you must edit) |
 | `supabase/schema.sql` | Database tables, security policies, storage bucket |
-| `supabase/migration-002-claps-comments.sql` | Claps + typed comments (already applied to the live project) |
+| `supabase/migration-002-claps-comments.sql` | Claps + typed comments (applied) |
+| `supabase/migration-003-profiles-teams.sql` | Username/photo/about + teams with approval (applied) |
 | `manifest.webmanifest` / `sw.js` / `icons/` | PWA: installable, instant-open |
 | `capacitor.config.json` / `package.json` / `scripts/copy-www.js` | Android wrapper |
 | `.github/workflows/android-apk.yml` | Cloud APK builder |
@@ -87,6 +88,9 @@ Notes:
 - Feed of all posts, newest first (text, photo, or video ≤ 50MB)
 - Clap (one per person) on posts; delete your own posts
 - Typed comments — Appreciate, Suggest, or Ask — so fans, peers, and learners each have a way in
+- Profiles: photo, unique @username, about, city, skill; tap any name to open a profile
+- Teams: anyone creates a team (page) and becomes its admin; players request to join, the admin approves or declines; approved teams show on the player's profile
+- About HALBA page (from login screen and profile)
 - Profile page with post count and likes earned
 - Row-level security: users can only write as themselves; everyone can read
 

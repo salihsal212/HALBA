@@ -42,6 +42,14 @@
       <label>Full name
         <input type="text" name="name" autocomplete="name" required maxlength="60">
       </label>
+      <label>Username
+        <div class="at-field">
+          <span>@</span>
+          <input type="text" name="username" autocomplete="username" required minlength="3" maxlength="20"
+            pattern="[a-z0-9_]{3,20}" placeholder="yourname" autocapitalize="off" spellcheck="false">
+        </div>
+        <small class="field-hint" data-hint="username">Letters, numbers and _ only. This is how people find you.</small>
+      </label>
       <div class="grid-2">
         <label>City
           <input type="text" name="city" placeholder="Kuwait City" required maxlength="40">
@@ -63,6 +71,7 @@
     </form>
 
     <p id="auth-msg" class="msg" role="status"></p>
+    <p class="auth-about"><button type="button" class="linklike linklike-light" id="auth-about-btn">What is HALBA?</button></p>
   </div>
 </section>
 
@@ -99,23 +108,61 @@
     </form>
   </main>
 
-  <!-- PROFILE -->
-  <main id="view-profile" class="view" hidden>
-    <div class="card profile-card">
-      <div class="profile-head">
-        <div class="avatar" id="profile-avatar"></div>
-        <div>
-          <h2 id="profile-name"></h2>
-          <p id="profile-meta" class="profile-meta"></p>
-        </div>
-      </div>
-      <div class="profile-stats">
-        <div><strong id="stat-posts">0</strong><span>posts</span></div>
-        <div><strong id="stat-claps">0</strong><span>claps earned</span></div>
-      </div>
-      <button id="btn-logout" class="btn btn-ghost">Log out</button>
+  <!-- TEAMS -->
+  <main id="view-teams" class="view" hidden>
+    <div class="row-between">
+      <h2 class="page-title">Teams</h2>
+      <button id="btn-new-team" class="btn btn-small btn-primary">Create a team</button>
     </div>
-    <h3 class="section-title">My posts</h3>
+    <input type="search" id="team-search" class="search" placeholder="Search teams by name, skill or city">
+    <div id="team-list" class="team-list"></div>
+    <p id="teams-empty" class="empty" hidden>No teams yet. Create the first one.</p>
+  </main>
+
+  <!-- TEAM PAGE -->
+  <main id="view-team" class="view" hidden>
+    <button class="back" data-back="teams">← Teams</button>
+    <div id="team-page"></div>
+  </main>
+
+
+  <!-- ABOUT -->
+  <main id="view-about" class="view" hidden>
+    <button class="back" id="about-back" data-back="profile">← Back</button>
+    <article class="about">
+      <img class="logo about-logo" src="brand/logo-horizontal.svg" alt="HALBA" width="680" height="132">
+      <p class="about-kicker">The arena where talent gets seen.</p>
+
+      <h2>Why HALBA exists</h2>
+      <p>Somewhere in Kuwait right now, there's a boy who swims faster than anyone on his street. His parents know he's fast. But nobody has ever timed him, no club has ever seen him, and so he'll grow up, get a normal job, and the gift will quietly fade.</p>
+      <p>Michael Phelps had the same gift. The difference wasn't talent. Someone was watching.</p>
+      <p>Talent is spread evenly across the world. Opportunity is not. HALBA is our attempt to fix that for one region — the Middle East — one post at a time.</p>
+
+      <h2>What HALBA is</h2>
+      <p><em>Halba</em> means <em>the arena</em> in Arabic. It's a place to show what you can do and be seen for it — football, swimming, running, gaming, singing, drawing, coding, anything. If you're good at it, it belongs here.</p>
+      <ul class="about-list">
+        <li><strong>Post</strong> a photo or video of your skill.</li>
+        <li><strong>Clap</strong> 👏 for what deserves it. One clap per person — it means something.</li>
+        <li><strong>Comment</strong> with a purpose: <span class="kind kind-appreciate">Appreciate</span> <span class="kind kind-suggest">Suggest</span> <span class="kind kind-ask">Ask</span> — so fans can cheer, people who know the skill can help, and beginners can learn how it's done.</li>
+        <li><strong>Teams</strong> — join the club you play for, or create one and bring your people in.</li>
+      </ul>
+
+      <h2>What HALBA is not</h2>
+      <p>It's not a popularity contest. There's no algorithm deciding who matters and no reward for dancing to a trend. There is only the skill, and the people who recognise it.</p>
+
+      <h2>Where this goes</h2>
+      <p>Today HALBA is a stage. Tomorrow it's a ladder: city leaderboards, real competitions, and a path for academies, coaches and scouts to find the next champion before anyone else does. The kid on the dust pitch. The girl who outruns everyone at school. The gamer nobody takes seriously. They're all already here. They just haven't been seen yet.</p>
+
+      <p class="about-sign">Built in Kuwait, with zero budget and a lot of belief.<br>— Salih, founder</p>
+      <p class="about-foot">Every street has a champion. We're building the arena where they're found.</p>
+    </article>
+  </main>
+
+  <!-- PROFILE (mine or someone else's) -->
+  <main id="view-profile" class="view" hidden>
+    <button class="back" id="profile-back" data-back="feed" hidden>← Back</button>
+    <div id="profile-page"></div>
+    <h3 class="section-title" id="profile-posts-title">Posts</h3>
     <div id="profile-posts" class="feed"></div>
   </main>
 
@@ -123,6 +170,10 @@
     <button data-nav="feed" class="nav-btn is-active" aria-label="Arena feed">
       <svg viewBox="0 0 24 24"><path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-5v-6h-4v6H5a1 1 0 0 1-1-1z"/></svg>
       <span>Arena</span>
+    </button>
+    <button data-nav="teams" class="nav-btn" aria-label="Teams">
+      <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.2"/><circle cx="16.5" cy="9.5" r="2.6"/><path d="M3 19c.8-3.2 3-4.8 6-4.8s5.2 1.6 6 4.8M14.5 15.3c2.4.1 4.1 1.3 4.8 3.7"/></svg>
+      <span>Teams</span>
     </button>
     <button data-nav="compose" class="nav-btn nav-post" aria-label="New post">
       <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke-width="2.6" stroke-linecap="round"/></svg>
@@ -133,6 +184,85 @@
       <span>Me</span>
     </button>
   </nav>
+</div>
+
+<!-- ======================= EDIT PROFILE SHEET ======================= -->
+<div id="sheet-profile" class="sheet" hidden>
+  <form id="form-profile" class="sheet-card">
+    <div class="sheet-head">
+      <h2>Edit profile</h2>
+      <button type="button" class="sheet-close" data-close="sheet-profile" aria-label="Close">×</button>
+    </div>
+    <p id="profile-notice" class="notice" hidden>Pick a username so people can find you.</p>
+    <label class="avatar-pick">
+      <input type="file" name="avatar" accept="image/*">
+      <span class="avatar avatar-lg" id="edit-avatar"></span>
+      <span class="avatar-pick-text">Change photo</span>
+    </label>
+    <label>Full name
+      <input type="text" name="name" required maxlength="60">
+    </label>
+    <label>Username
+      <div class="at-field">
+        <span>@</span>
+        <input type="text" name="username" required minlength="3" maxlength="20" pattern="[a-z0-9_]{3,20}"
+          autocapitalize="off" spellcheck="false">
+      </div>
+      <small class="field-hint" data-hint="username">Letters, numbers and _ only.</small>
+    </label>
+    <div class="grid-2">
+      <label>City
+        <input type="text" name="city" required maxlength="40">
+      </label>
+      <label>Skill
+        <input type="text" name="skill" required maxlength="40">
+      </label>
+    </div>
+    <label>About
+      <textarea name="about" rows="3" maxlength="200" placeholder="A line or two about you and your skill"></textarea>
+    </label>
+    <button type="submit" class="btn btn-primary">Save profile</button>
+    <p class="msg msg-dark" data-msg="profile" role="status"></p>
+  </form>
+</div>
+
+<!-- ======================= CREATE TEAM SHEET ======================= -->
+<div id="sheet-team" class="sheet" hidden>
+  <form id="form-team" class="sheet-card">
+    <div class="sheet-head">
+      <h2>Create a team</h2>
+      <button type="button" class="sheet-close" data-close="sheet-team" aria-label="Close">×</button>
+    </div>
+    <label class="avatar-pick">
+      <input type="file" name="logo" accept="image/*">
+      <span class="avatar avatar-lg avatar-team" id="team-logo-preview">T</span>
+      <span class="avatar-pick-text">Add a logo</span>
+    </label>
+    <label>Team name
+      <input type="text" name="name" required minlength="2" maxlength="60" placeholder="Salmiya Sharks">
+    </label>
+    <label>Handle
+      <div class="at-field">
+        <span>@</span>
+        <input type="text" name="handle" required minlength="3" maxlength="24" pattern="[a-z0-9_]{3,24}"
+          placeholder="salmiya_sharks" autocapitalize="off" spellcheck="false">
+      </div>
+      <small class="field-hint" data-hint="handle">Letters, numbers and _ only.</small>
+    </label>
+    <div class="grid-2">
+      <label>Skill
+        <input type="text" name="skill" maxlength="40" placeholder="Football">
+      </label>
+      <label>City
+        <input type="text" name="city" maxlength="40" placeholder="Salmiya">
+      </label>
+    </div>
+    <label>About
+      <textarea name="about" rows="3" maxlength="300" placeholder="Who you are, who can join"></textarea>
+    </label>
+    <button type="submit" class="btn btn-primary">Create team</button>
+    <p class="msg msg-dark" data-msg="team" role="status"></p>
+  </form>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>

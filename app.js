@@ -1,5 +1,5 @@
 /* ====================================================================
-   HALBA — login + post MVP
+   HALBA — profiles, posts, claps, typed comments, teams
    Stack: supabase-js v2 (auth, Postgres, storage). No build step.
 ==================================================================== */
 (function () {
@@ -36,14 +36,74 @@
     return Math.floor(s / 86400) + "d";
   }
 
-  var views = ["feed", "compose", "profile"];
-  function show(view) {
+  var views = ["feed", "compose", "teams", "team", "profile", "about"];
+  function show(view, arg) {
     views.forEach(function (v) { $("view-" + v).hidden = v !== view; });
+    var navKey = view === "team" ? "teams" : view;
     document.querySelectorAll(".nav-btn").forEach(function (b) {
-      b.classList.toggle("is-active", b.dataset.nav === view);
+      b.classList.toggle("is-active", b.dataset.nav === navKey);
     });
+    window.scrollTo(0, 0);
     if (view === "feed") loadFeed();
-    if (view === "profile") loadProfile();
+    if (view === "teams") loadTeams();
+    if (view === "team") loadTeam(arg);
+    if (view === "profile") loadProfile(arg || (me && me.id));
+  }
+  function openSheet(id) { $(id).hidden = false; document.body.classList.add("no-scroll"); }
+  function closeSheet(id) { $(id).hidden = true; document.body.classList.remove("no-scroll"); }
+  document.querySelectorAll(".sheet-close").forEach(function (b) {
+    b.addEventListener("click", function () { closeSheet(b.dataset.close); });
+  });
+  document.querySelectorAll(".back").forEach(function (b) {
+    b.addEventListener("click", function () { if (b.dataset.back !== "__auth") show(b.dataset.back); });
+  });
+  $("auth-about-btn").addEventListener("click", function () {
+    $("view-auth").hidden = true;
+    $("app-shell").hidden = false;
+    document.querySelector(".bottomnav").hidden = true;
+    $("about-back").dataset.back = "__auth";
+    show("about");
+  });
+  $("about-back").addEventListener("click", function () {
+    if ($("about-back").dataset.back === "__auth") {
+      $("app-shell").hidden = true; document.querySelector(".bottomnav").hidden = false; $("view-auth").hidden = false;
+    }
+  });
+  function avatarHtml(prof, cls) {
+    prof = prof || {};
+    if (prof.avatar_url) {
+      return '<img class="avatar ' + (cls || "") + '" src="' + esc(prof.avatar_url) + '" alt="">';
+    }
+    return '<div class="avatar ' + (cls || "") + '">' + esc(initials(prof.name)) + "</div>";
+  }
+  async function uploadFile(file, prefix) {
+    var path = me.id + "/" + prefix + "_" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+    var up = await sb.storage.from("media").upload(path, file, { contentType: file.type });
+    if (up.error) throw up.error;
+    return sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+  }
+  var USERNAME_RE = /^[a-z0-9_]{3,20}$/;
+  async function usernameTaken(u, exceptId) {
+    var q = sb.from("profiles").select("id").eq("username", u);
+    var r = await q;
+    return (r.data || []).some(function (row) { return row.id !== exceptId; });
+  }
+  // live username hint on any field with data-hint="username" sibling
+  function wireUsernameHint(input, hintEl, exceptId) {
+    var t;
+    input.addEventListener("input", function () {
+      input.value = input.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+      clearTimeout(t);
+      var u = input.value;
+      if (!USERNAME_RE.test(u)) { hintEl.textContent = "3–20 characters: letters, numbers, _"; hintEl.className = "field-hint"; return; }
+      hintEl.textContent = "Checking…"; hintEl.className = "field-hint";
+      t = setTimeout(async function () {
+        var ex = typeof exceptId === "function" ? exceptId() : exceptId;
+        var taken = await usernameTaken(u, ex);
+        hintEl.textContent = taken ? "@" + u + " is taken" : "@" + u + " is available";
+        hintEl.className = "field-hint " + (taken ? "is-bad" : "is-good");
+      }, 350);
+    });
   }
 
   // ---------- auth ----------
@@ -59,12 +119,17 @@
   $("form-signup").addEventListener("submit", async function (e) {
     e.preventDefault();
     var f = e.target;
+    var uname = f.username.value.trim().toLowerCase();
+    if (!USERNAME_RE.test(uname)) return setAuthMsg("Username: 3–20 characters, letters, numbers and _ only.");
+    setAuthMsg("Checking username…");
+    if (await usernameTaken(uname)) return setAuthMsg("@" + uname + " is already taken — try another.");
     setAuthMsg("Creating your profile…");
     var res = await sb.auth.signUp({
       email: f.email.value.trim(),
       password: f.password.value,
       options: { data: {
         name: f.name.value.trim(),
+        username: uname,
         city: f.city.value.trim(),
         skill: f.skill.value.trim()
       } }
@@ -87,7 +152,8 @@
     if (res.error) return setAuthMsg(res.error.message);
   });
 
-  $("btn-logout").addEventListener("click", function () { sb.auth.signOut(); });
+  wireUsernameHint(document.querySelector('#form-signup input[name="username"]'),
+    document.querySelector('#form-signup [data-hint="username"]'));
 
   async function ensureProfile() {
     var got = await sb.from("profiles").select("*").eq("id", me.id).maybeSingle();
@@ -96,6 +162,7 @@
     var ins = await sb.from("profiles").insert({
       id: me.id,
       name: md.name || "Athlete",
+      username: md.username || null,
       city: md.city || "",
       skill: md.skill || ""
     }).select().single();
@@ -110,6 +177,7 @@
       $("app-shell").hidden = false;
       $("topbar-skill").textContent = myProfile.skill || "";
       show("feed");
+      if (!myProfile.username) openEditProfile(true);
     } else {
       myProfile = null;
       $("app-shell").hidden = true;
@@ -130,7 +198,7 @@
     var row = document.createElement("div");
     row.className = "comment";
     row.innerHTML =
-      '<div class="avatar avatar-sm">' + esc(initials(prof.name)) + "</div>" +
+      avatarHtml(prof, "avatar-sm") +
       '<div class="comment-body">' +
         '<div class="comment-meta"><strong>' + esc(prof.name || "Someone") + "</strong>" +
         '<span class="kind kind-' + esc(c.kind) + '">' + esc(KINDS[c.kind] ? KINDS[c.kind].label : c.kind) + "</span>" +
@@ -163,10 +231,10 @@
     }
 
     card.innerHTML =
-      '<div class="post-head">' +
-        '<div class="avatar">' + esc(initials(prof.name)) + "</div>" +
+      '<div class="post-head" role="link" tabindex="0">' +
+        avatarHtml(prof, "") +
         '<div class="post-who"><strong>' + esc(prof.name || "Athlete") + "</strong>" +
-        "<small>" + esc(prof.city || "") + " · " + timeAgo(p.created_at) + "</small></div>" +
+        "<small>" + (prof.username ? "@" + esc(prof.username) + " · " : "") + esc(prof.city || "") + " · " + timeAgo(p.created_at) + "</small></div>" +
         (prof.skill ? '<span class="chip post-skill">' + esc(prof.skill) + "</span>" : "") +
       "</div>" +
       '<p class="post-caption">' + esc(p.caption) + "</p>" +
@@ -197,6 +265,12 @@
         "</form>" +
       "</section>";
 
+    card.querySelector(".post-head").addEventListener("click", function () {
+      $("profile-back").hidden = false;
+      $("profile-back").dataset.back = "feed";
+      show("profile", p.user_id);
+    });
+
     // clap (one per person, toggles)
     card.querySelector(".clap-btn").addEventListener("click", async function () {
       var btn = this, count = btn.querySelector(".clap-count");
@@ -218,7 +292,7 @@
     var loaded = false;
     async function loadComments() {
       var res = await sb.from("comments")
-        .select("*, profiles(name)")
+        .select("*, profiles(name, avatar_url)")
         .eq("post_id", p.id)
         .order("created_at", { ascending: true });
       listEl.innerHTML = "";
@@ -258,7 +332,7 @@
       sendBtn.disabled = true;
       var ins = await sb.from("comments")
         .insert({ post_id: p.id, user_id: me.id, kind: kind, body: body })
-        .select("*, profiles(name)").single();
+        .select("*, profiles(name, avatar_url)").single();
       sendBtn.disabled = false;
       if (ins.error) { form.body.placeholder = "Couldn't send. Try again."; return; }
       listEl.appendChild(commentRow(ins.data));
@@ -279,7 +353,7 @@
 
   async function loadFeed() {
     var res = await sb.from("posts")
-      .select("*, profiles!posts_user_id_fkey(name, city, skill), claps(user_id), comments(id)")
+      .select("*, profiles!posts_user_id_fkey(name, city, skill, username, avatar_url), claps(user_id), comments(id)")
       .order("created_at", { ascending: false })
       .limit(50);
     var list = $("feed-list");
@@ -330,10 +404,7 @@
     try {
       var media_url = null, media_type = null;
       if (file) {
-        var path = me.id + "/" + Date.now() + "_" + file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-        var up = await sb.storage.from("media").upload(path, file, { contentType: file.type });
-        if (up.error) throw up.error;
-        media_url = sb.storage.from("media").getPublicUrl(path).data.publicUrl;
+        media_url = await uploadFile(file, "post");
         media_type = file.type.indexOf("video") === 0 ? "video" : "image";
       }
       var ins = await sb.from("posts").insert({
@@ -357,32 +428,312 @@
     }
   });
 
-  // ---------- profile ----------
-  async function loadProfile() {
-    $("profile-avatar").textContent = initials(myProfile.name);
-    $("profile-name").textContent = myProfile.name;
-    $("profile-meta").textContent =
-      (myProfile.skill || "—") + " · " + (myProfile.city || "—");
+  // ---------- profile (mine or someone else's) ----------
+  async function loadProfile(userId) {
+    var isMe = me && userId === me.id;
+    $("profile-back").hidden = isMe;
+    var page = $("profile-page");
+    page.innerHTML = '<p class="empty">Loading…</p>';
+
+    var pr = isMe ? { data: myProfile } : await sb.from("profiles").select("*").eq("id", userId).maybeSingle();
+    var prof = pr.data;
+    if (!prof) { page.innerHTML = '<p class="empty">Profile not found.</p>'; return; }
+    if (isMe) myProfile = prof;
+
+    var mem = await sb.from("team_members")
+      .select("status, role, teams(id, name, handle, logo_url)")
+      .eq("user_id", userId);
+    var teams = (mem.data || []).filter(function (m) { return m.teams; });
 
     var res = await sb.from("posts")
-      .select("*, profiles!posts_user_id_fkey(name, city, skill), claps(user_id), comments(id)")
-      .eq("user_id", me.id)
+      .select("*, profiles!posts_user_id_fkey(name, city, skill, username, avatar_url), claps(user_id), comments(id)")
+      .eq("user_id", userId)
       .order("created_at", { ascending: false });
     var rows = res.data || [];
-    $("stat-posts").textContent = rows.length;
-    $("stat-claps").textContent = rows.reduce(function (n, p) {
-      return n + (p.claps ? p.claps.length : 0);
-    }, 0);
+    var clapsEarned = rows.reduce(function (n, p) { return n + (p.claps ? p.claps.length : 0); }, 0);
+
+    var teamHtml = teams.length
+      ? '<div class="team-badges">' + teams.map(function (m) {
+          var t = m.teams;
+          return '<button class="team-badge' + (m.status === "pending" ? " is-pending" : "") + '" data-team="' + esc(t.id) + '">' +
+            avatarHtml({ name: t.name, avatar_url: t.logo_url }, "avatar-xs avatar-team") +
+            "<span>" + esc(t.name) + "</span>" +
+            (m.status === "pending" ? "<small>pending approval</small>" : (m.role === "admin" ? "<small>admin</small>" : "")) +
+          "</button>";
+        }).join("") + "</div>"
+      : (isMe ? '<p class="profile-noteam">Part of a team? <button class="linklike" id="go-teams">Find or create it</button></p>' : "");
+
+    page.innerHTML =
+      '<section class="profile-card card">' +
+        '<div class="profile-cover"></div>' +
+        '<div class="profile-main">' +
+          avatarHtml(prof, "avatar-xl") +
+          '<h2 class="profile-name">' + esc(prof.name) + "</h2>" +
+          (prof.username ? '<p class="profile-handle">@' + esc(prof.username) + "</p>" : "") +
+          '<p class="profile-meta">' +
+            (prof.skill ? '<span class="chip chip-skill">' + esc(prof.skill) + "</span>" : "") +
+            (prof.city ? "<span>" + esc(prof.city) + "</span>" : "") +
+          "</p>" +
+          teamHtml +
+          (prof.about ? '<p class="profile-about">' + esc(prof.about) + "</p>" : (isMe ? '<p class="profile-about is-empty">Add a line about yourself.</p>' : "")) +
+          '<div class="profile-stats">' +
+            "<div><strong>" + rows.length + "</strong><span>posts</span></div>" +
+            "<div><strong>" + clapsEarned + "</strong><span>claps earned</span></div>" +
+            "<div><strong>" + teams.filter(function (m) { return m.status === "approved"; }).length + "</strong><span>teams</span></div>" +
+          "</div>" +
+          (isMe
+            ? '<div class="profile-actions">' +
+                '<button class="btn btn-primary btn-small" id="btn-edit-profile">Edit profile</button>' +
+                '<button class="btn btn-ghost btn-small" id="btn-logout">Log out</button>' +
+                '<button class="linklike" id="btn-about">About HALBA</button>' +
+              "</div>"
+            : "") +
+        "</div>" +
+      "</section>";
+
+    $("profile-posts-title").textContent = isMe ? "My posts" : "Posts";
     var list = $("profile-posts");
     list.innerHTML = "";
-    rows.forEach(function (p) {
-      list.appendChild(postCard(p, { canDelete: true }));
+    rows.forEach(function (p) { list.appendChild(postCard(p, { canDelete: isMe })); });
+
+    page.querySelectorAll(".team-badge").forEach(function (b) {
+      b.addEventListener("click", function () { show("team", b.dataset.team); });
+    });
+    var go = $("go-teams"); if (go) go.addEventListener("click", function () { show("teams"); });
+    var ed = $("btn-edit-profile"); if (ed) ed.addEventListener("click", function () { openEditProfile(false); });
+    var lo = $("btn-logout"); if (lo) lo.addEventListener("click", function () { sb.auth.signOut(); });
+    var ab = $("btn-about"); if (ab) ab.addEventListener("click", function () { $("about-back").dataset.back = "profile"; show("about"); });
+  }
+
+  // ---------- edit profile sheet ----------
+  var profForm = $("form-profile");
+  var profAvatarFile = null;
+  function openEditProfile(needUsername) {
+    $("profile-notice").hidden = !needUsername;
+    profForm.name.value = myProfile.name || "";
+    profForm.username.value = myProfile.username || "";
+    profForm.city.value = myProfile.city || "";
+    profForm.skill.value = myProfile.skill || "";
+    profForm.about.value = myProfile.about || "";
+    $("edit-avatar").outerHTML = avatarHtml(myProfile, "avatar-lg").replace('class="avatar', 'id="edit-avatar" class="avatar');
+    profForm.querySelector('[data-hint="username"]').textContent = "Letters, numbers and _ only.";
+    profForm.querySelector('[data-msg="profile"]').textContent = "";
+    profAvatarFile = null;
+    openSheet("sheet-profile");
+    if (needUsername) profForm.username.focus();
+  }
+  wireUsernameHint(profForm.username, profForm.querySelector('[data-hint="username"]'), function () { return me && me.id; });
+  profForm.avatar.addEventListener("change", function () {
+    var f = profForm.avatar.files[0];
+    if (!f) return;
+    if (f.size > 5 * 1024 * 1024) { profForm.querySelector('[data-msg="profile"]').textContent = "Photo must be under 5MB."; return; }
+    profAvatarFile = f;
+    var url = URL.createObjectURL(f);
+    $("edit-avatar").outerHTML = '<img id="edit-avatar" class="avatar avatar-lg" src="' + url + '" alt="">';
+  });
+  profForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var msg = profForm.querySelector('[data-msg="profile"]');
+    var uname = profForm.username.value.trim().toLowerCase();
+    if (!USERNAME_RE.test(uname)) { msg.textContent = "Username: 3–20 characters, letters, numbers and _ only."; return; }
+    msg.textContent = "Saving…";
+    if (uname !== myProfile.username && await usernameTaken(uname, me.id)) { msg.textContent = "@" + uname + " is taken."; return; }
+    try {
+      var patch = {
+        name: profForm.name.value.trim(),
+        username: uname,
+        city: profForm.city.value.trim(),
+        skill: profForm.skill.value.trim(),
+        about: profForm.about.value.trim()
+      };
+      if (profAvatarFile) patch.avatar_url = await uploadFile(profAvatarFile, "avatar");
+      var up = await sb.from("profiles").update(patch).eq("id", me.id).select().single();
+      if (up.error) throw up.error;
+      myProfile = up.data;
+      $("topbar-skill").textContent = myProfile.skill || "";
+      closeSheet("sheet-profile");
+      show("profile", me.id);
+    } catch (err) {
+      msg.textContent = /username/i.test(err.message) ? "That username is taken." : (err.message || "Couldn't save.");
+    }
+  });
+
+  // ---------- teams ----------
+  var allTeams = [];
+  function teamCard(t) {
+    var members = (t.team_members || []).filter(function (m) { return m.status === "approved"; }).length;
+    var el = document.createElement("button");
+    el.className = "card team-card";
+    el.innerHTML =
+      avatarHtml({ name: t.name, avatar_url: t.logo_url }, "avatar-team") +
+      '<div class="team-card-body"><strong>' + esc(t.name) + "</strong>" +
+      "<small>@" + esc(t.handle) + (t.skill ? " · " + esc(t.skill) : "") + (t.city ? " · " + esc(t.city) : "") + "</small>" +
+      "<small>" + members + (members === 1 ? " member" : " members") + "</small></div>";
+    el.addEventListener("click", function () { show("team", t.id); });
+    return el;
+  }
+  function renderTeams(filter) {
+    var q = (filter || "").toLowerCase();
+    var list = $("team-list");
+    list.innerHTML = "";
+    var rows = allTeams.filter(function (t) {
+      return !q || (t.name + " " + t.handle + " " + t.skill + " " + t.city).toLowerCase().indexOf(q) !== -1;
+    });
+    $("teams-empty").hidden = rows.length > 0;
+    rows.forEach(function (t) { list.appendChild(teamCard(t)); });
+  }
+  async function loadTeams() {
+    var res = await sb.from("teams").select("*, team_members(status)").order("created_at", { ascending: false }).limit(100);
+    allTeams = res.data || [];
+    renderTeams($("team-search").value);
+  }
+  $("team-search").addEventListener("input", function () { renderTeams(this.value); });
+
+  // create team sheet
+  var teamForm = $("form-team");
+  var teamLogoFile = null;
+  $("btn-new-team").addEventListener("click", function () {
+    teamForm.reset(); teamLogoFile = null;
+    $("team-logo-preview").outerHTML = '<span id="team-logo-preview" class="avatar avatar-lg avatar-team">T</span>';
+    teamForm.querySelector('[data-msg="team"]').textContent = "";
+    openSheet("sheet-team");
+  });
+  teamForm.name.addEventListener("input", function () {
+    if (!teamForm.handle.dataset.touched) {
+      teamForm.handle.value = teamForm.name.value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "").slice(0, 24);
+    }
+    $("team-logo-preview").textContent = initials(teamForm.name.value || "T");
+  });
+  teamForm.handle.addEventListener("input", function () {
+    teamForm.handle.dataset.touched = "1";
+    teamForm.handle.value = teamForm.handle.value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+  });
+  teamForm.logo.addEventListener("change", function () {
+    var f = teamForm.logo.files[0];
+    if (!f) return;
+    teamLogoFile = f;
+    $("team-logo-preview").outerHTML = '<img id="team-logo-preview" class="avatar avatar-lg avatar-team" src="' + URL.createObjectURL(f) + '" alt="">';
+  });
+  teamForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var msg = teamForm.querySelector('[data-msg="team"]');
+    var handle = teamForm.handle.value.trim();
+    if (!/^[a-z0-9_]{3,24}$/.test(handle)) { msg.textContent = "Handle: 3–24 characters, letters, numbers and _ only."; return; }
+    msg.textContent = "Creating…";
+    try {
+      var row = {
+        name: teamForm.name.value.trim(),
+        handle: handle,
+        skill: teamForm.skill.value.trim(),
+        city: teamForm.city.value.trim(),
+        about: teamForm.about.value.trim(),
+        admin_id: me.id
+      };
+      if (teamLogoFile) row.logo_url = await uploadFile(teamLogoFile, "teamlogo");
+      var ins = await sb.from("teams").insert(row).select().single();
+      if (ins.error) throw ins.error;
+      await sb.from("team_members").insert({ team_id: ins.data.id, user_id: me.id, status: "approved", role: "admin", approved_at: new Date().toISOString() });
+      closeSheet("sheet-team");
+      show("team", ins.data.id);
+    } catch (err) {
+      msg.textContent = /handle/i.test(err.message) || /duplicate/i.test(err.message) ? "That handle is taken." : (err.message || "Couldn't create team.");
+    }
+  });
+
+  // team page
+  async function loadTeam(teamId) {
+    var page = $("team-page");
+    page.innerHTML = '<p class="empty">Loading…</p>';
+    var res = await sb.from("teams")
+      .select("*, team_members(user_id, status, role, requested_at, profiles(name, username, avatar_url, skill))")
+      .eq("id", teamId).maybeSingle();
+    var t = res.data;
+    if (!t) { page.innerHTML = '<p class="empty">Team not found.</p>'; return; }
+    var members = (t.team_members || []);
+    var approved = members.filter(function (m) { return m.status === "approved"; });
+    var pending = members.filter(function (m) { return m.status === "pending"; });
+    var mine = members.find(function (m) { return me && m.user_id === me.id; });
+    var isAdmin = me && t.admin_id === me.id;
+
+    var actionHtml = "";
+    if (isAdmin) actionHtml = '<span class="chip chip-admin">You run this team</span>';
+    else if (!mine) actionHtml = '<button class="btn btn-primary btn-small" id="team-join">Request to join</button>';
+    else if (mine.status === "pending") actionHtml = '<span class="chip chip-pending">Request pending</span> <button class="linklike" id="team-leave">Cancel</button>';
+    else actionHtml = '<span class="chip chip-member">Member ✓</span> <button class="linklike" id="team-leave">Leave team</button>';
+
+    function memberRow(m, withActions) {
+      var p = m.profiles || {};
+      return '<div class="member" data-user="' + esc(m.user_id) + '">' +
+        avatarHtml(p, "avatar-sm") +
+        '<div class="member-body"><strong>' + esc(p.name || "Member") + "</strong>" +
+        "<small>" + (p.username ? "@" + esc(p.username) : "") + (p.skill ? " · " + esc(p.skill) : "") + (m.role === "admin" ? " · admin" : "") + "</small></div>" +
+        (withActions
+          ? '<button class="btn btn-small btn-primary act-approve">Approve</button><button class="btn btn-small btn-ghost act-decline">Decline</button>'
+          : (isAdmin && m.role !== "admin" ? '<button class="linklike act-remove">Remove</button>' : "")) +
+      "</div>";
+    }
+
+    page.innerHTML =
+      '<section class="card team-head">' +
+        avatarHtml({ name: t.name, avatar_url: t.logo_url }, "avatar-xl avatar-team") +
+        '<h2 class="profile-name">' + esc(t.name) + "</h2>" +
+        '<p class="profile-handle">@' + esc(t.handle) + "</p>" +
+        '<p class="profile-meta">' +
+          (t.skill ? '<span class="chip chip-skill">' + esc(t.skill) + "</span>" : "") +
+          (t.city ? "<span>" + esc(t.city) + "</span>" : "") +
+        "</p>" +
+        (t.about ? '<p class="profile-about">' + esc(t.about) + "</p>" : "") +
+        '<div class="profile-stats"><div><strong>' + approved.length + "</strong><span>members</span></div></div>" +
+        '<div class="profile-actions">' + actionHtml + "</div>" +
+      "</section>" +
+      (isAdmin && pending.length
+        ? '<h3 class="section-title">Join requests <span class="count">' + pending.length + "</span></h3>" +
+          '<div class="card member-list" id="pending-list">' + pending.map(function (m) { return memberRow(m, true); }).join("") + "</div>"
+        : "") +
+      '<h3 class="section-title">Members</h3>' +
+      '<div class="card member-list">' + (approved.length ? approved.map(function (m) { return memberRow(m, false); }).join("") : '<p class="empty">No members yet.</p>') + "</div>";
+
+    var join = $("team-join");
+    if (join) join.addEventListener("click", async function () {
+      join.disabled = true;
+      var r = await sb.from("team_members").insert({ team_id: t.id, user_id: me.id });
+      if (r.error) { join.disabled = false; join.textContent = "Couldn't send — try again"; return; }
+      loadTeam(t.id);
+    });
+    var leave = $("team-leave");
+    if (leave) leave.addEventListener("click", async function () {
+      await sb.from("team_members").delete().match({ team_id: t.id, user_id: me.id });
+      loadTeam(t.id);
+    });
+    page.querySelectorAll(".member").forEach(function (row) {
+      var uid = row.dataset.user;
+      var ap = row.querySelector(".act-approve"), de = row.querySelector(".act-decline"), rm = row.querySelector(".act-remove");
+      if (ap) ap.addEventListener("click", async function () {
+        ap.disabled = true;
+        await sb.from("team_members").update({ status: "approved", approved_at: new Date().toISOString() }).match({ team_id: t.id, user_id: uid });
+        loadTeam(t.id);
+      });
+      if (de) de.addEventListener("click", async function () {
+        await sb.from("team_members").delete().match({ team_id: t.id, user_id: uid });
+        loadTeam(t.id);
+      });
+      if (rm) rm.addEventListener("click", async function () {
+        await sb.from("team_members").delete().match({ team_id: t.id, user_id: uid });
+        loadTeam(t.id);
+      });
+      row.querySelector(".avatar").addEventListener("click", function () {
+        $("profile-back").hidden = false; $("profile-back").dataset.back = "teams";
+        show("profile", uid);
+      });
     });
   }
 
   // ---------- nav ----------
   document.querySelectorAll(".nav-btn").forEach(function (b) {
-    b.addEventListener("click", function () { show(b.dataset.nav); });
+    b.addEventListener("click", function () {
+      if (b.dataset.nav === "profile") { $("profile-back").hidden = true; show("profile", me.id); }
+      else show(b.dataset.nav);
+    });
   });
 
   // ---------- PWA ----------
