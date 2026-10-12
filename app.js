@@ -285,6 +285,12 @@
     var list = $("feed-list");
     list.innerHTML = "";
     var rows = res.data || [];
+    if (res.error) {
+      $("feed-empty").textContent = "Couldn't load the arena: " + res.error.message + " — pull to refresh or reopen the app.";
+      $("feed-empty").hidden = false;
+      return;
+    }
+    $("feed-empty").textContent = "The arena is quiet. Be the first to post your skill.";
     $("feed-empty").hidden = rows.length > 0;
     rows.forEach(function (p) {
       list.appendChild(postCard(p, { canDelete: me && p.user_id === me.id }));
