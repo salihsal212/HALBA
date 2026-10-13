@@ -80,6 +80,7 @@ Notes:
 | `supabase/migration-003-profiles-teams.sql` | Username/photo/about + teams with approval (applied) |
 | `supabase/migration-004-signup-fields.sql` | DOB/gender/nationality/residence + private contact table (applied) |
 | `supabase/migration-005-support.sql` | Support (one-way follow) (applied) |
+| `supabase/migration-006-guardian.sql` | Ages 3+, guardian-managed flag for under-13s (applied) |
 | `manifest.webmanifest` / `sw.js` / `icons/` | PWA: installable, instant-open |
 | `capacitor.config.json` / `package.json` / `scripts/copy-www.js` | Android wrapper |
 | `.github/workflows/android-apk.yml` | Cloud APK builder |
@@ -90,7 +91,7 @@ Notes:
 - Feed of all posts, newest first (text, photo, or video ≤ 50MB)
 - Clap (one per person) on posts; delete your own posts
 - Typed comments — Appreciate, Suggest, or Ask — so fans, peers, and learners each have a way in
-- Profiles: photo, unique @username, about, date of birth (13+; only birth year and age bracket are public), gender, nationality, country of residence, city, skill; optional mobile number kept in a private table only the owner can read; tap any name to open a profile
+- Profiles: photo, unique @username, about, date of birth (ages 3+; only birth year and age bracket are public; under-13 accounts are guardian-managed with guardian name and mobile kept private), gender, nationality, country of residence, city, skill; optional mobile number kept in a private table only the owner can read; tap any name to open a profile
 - Teams: anyone creates a team (page) and becomes its admin; players request to join, the admin approves or declines; approved teams show on the player's profile
 - Support (one-way follow): Support button on profiles, supporters / supporting counts, tap to see the list
 - About HALBA page (from login screen and profile)

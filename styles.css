@@ -325,6 +325,9 @@ img.avatar { object-fit: cover; }
 .team-badge small { color: var(--mute); font-weight: 600; }
 .team-badge.is-pending { background: var(--gold-tint, #FEF5D6); color: #8A6400; }
 .chip-admin { background: var(--navy); color: #fff; }
+.chip-managed { background: #E3F5EA; color: #1F7A3E; }
+.guardian-block { margin-bottom: 12px; }
+.sheet-card .guardian-block .notice, .auth-card .guardian-block .notice { margin-bottom: 10px; }
 .chip-member { background: #E3F5EA; color: #1F7A3E; }
 .chip-pending { background: #FEF5D6; color: #8A6400; }
 .team-head { text-align: center; padding: 20px; }

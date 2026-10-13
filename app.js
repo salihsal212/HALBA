@@ -147,7 +147,7 @@
     if (!dobStr) return "Date of birth is required.";
     var age = ageOn(dobStr);
     if (isNaN(age) || age > 100) return "Please enter a valid date of birth.";
-    if (age < 13) return "You must be 13 or older to join HALBA.";
+    if (age < 3) return "HALBA is for ages 3 and up.";
     return null;
   }
   function validPhone(p) {
@@ -156,9 +156,29 @@
     return /^\+?[0-9 ]{7,16}$/.test(p) ? null : "Mobile number: digits only, e.g. +965 5xxx xxxx";
   }
   (function () {
-    var max = new Date(); max.setFullYear(max.getFullYear() - 13);
+    var max = new Date(); max.setFullYear(max.getFullYear() - 3);
     var iso = max.toISOString().slice(0, 10);
-    document.querySelectorAll('input[name="birth_date"]').forEach(function (i) { i.max = iso; });
+    document.querySelectorAll('input[name="birth_date"]').forEach(function (i) {
+      i.max = iso;
+      // show guardian fields for under-13s
+      i.addEventListener("input", function () {
+        var form = i.form, block = form.querySelector("[data-guardian]");
+        if (!block) return;
+        var minor = i.value && ageOn(i.value) < 13;
+        block.hidden = !minor;
+        form.guardian_name.required = !!minor;
+        form.guardian_phone.required = !!minor;
+      });
+    });
+  function guardianCheck(form) {
+    var minor = form.birth_date.value && ageOn(form.birth_date.value) < 13;
+    if (!minor) return null;
+    if (!form.guardian_name.value.trim()) return "Guardian's name is required for under-13 accounts.";
+    var e = validPhone(form.guardian_phone.value);
+    if (e || !form.guardian_phone.value.trim()) return "Guardian's mobile number is required for under-13 accounts.";
+    return null;
+  }
+  window.__guardianCheck = guardianCheck;
   })();
 
   // ---------- auth ----------
@@ -178,6 +198,7 @@
     if (!USERNAME_RE.test(uname)) return setAuthMsg("Username: 3–20 characters, letters, numbers and _ only.");
     var dobErr = validDob(f.birth_date.value); if (dobErr) return setAuthMsg(dobErr);
     var phErr = validPhone(f.phone.value); if (phErr) return setAuthMsg(phErr);
+    var gErr = window.__guardianCheck(f); if (gErr) return setAuthMsg(gErr);
     setAuthMsg("Checking username…");
     if (await usernameTaken(uname)) return setAuthMsg("@" + uname + " is already taken — try another.");
     setAuthMsg("Creating your profile…");
@@ -193,7 +214,9 @@
         nationality: f.nationality.value,
         residence: f.residence.value,
         birth_date: f.birth_date.value,
-        phone: f.phone.value.trim() || null
+        phone: f.phone.value.trim() || null,
+        guardian_name: f.guardian_name.value.trim() || null,
+        guardian_phone: f.guardian_phone.value.trim() || null
       } }
     });
     if (res.error) return setAuthMsg(res.error.message);
@@ -232,11 +255,13 @@
       nationality: md.nationality || null,
       residence: md.residence || null,
       birth_year: md.birth_date ? new Date(md.birth_date).getFullYear() : null,
-      age_bracket: age != null ? bracketFor(age) : null
+      age_bracket: age != null ? bracketFor(age) : null,
+      guardian_managed: age != null && age < 13
     }).select().single();
     myProfile = ins.data || { id: me.id, name: md.name || "Athlete", city: "", skill: "" };
     if (md.birth_date || md.phone) {
-      await sb.from("profile_private").upsert({ user_id: me.id, birth_date: md.birth_date || null, phone: md.phone || null });
+      await sb.from("profile_private").upsert({ user_id: me.id, birth_date: md.birth_date || null, phone: md.phone || null,
+        guardian_name: md.guardian_name || null, guardian_phone: md.guardian_phone || null });
     }
   }
 
@@ -555,6 +580,7 @@
           "</p>" +
           '<p class="profile-facts">' +
             (prof.age_bracket ? "<span><strong>" + esc(bracketLabel(prof.age_bracket)) + "</strong></span>" : "") +
+            (prof.guardian_managed ? '<span class="chip chip-managed">Managed by a parent</span>' : "") +
             (prof.birth_year ? "<span>Born " + esc(prof.birth_year) + "</span>" : "") +
             (prof.nationality ? "<span>" + esc(prof.nationality) + "</span>" : "") +
             (prof.residence && prof.residence !== prof.nationality ? "<span>Lives in " + esc(prof.residence) + "</span>" : "") +
@@ -653,6 +679,9 @@
     myPrivate = pv.data || {};
     profForm.birth_date.value = myPrivate.birth_date || "";
     profForm.phone.value = myPrivate.phone || "";
+    profForm.guardian_name.value = myPrivate.guardian_name || "";
+    profForm.guardian_phone.value = myPrivate.guardian_phone || "";
+    profForm.birth_date.dispatchEvent(new Event("input"));
     profForm.gender.value = myProfile.gender || "";
     profForm.nationality.value = myProfile.nationality || "";
     profForm.residence.value = myProfile.residence || "Kuwait";
@@ -684,12 +713,17 @@
     if (!USERNAME_RE.test(uname)) { msg.textContent = "Username: 3–20 characters, letters, numbers and _ only."; return; }
     var dobErr = validDob(profForm.birth_date.value); if (dobErr) { msg.textContent = dobErr; return; }
     var phErr = validPhone(profForm.phone.value); if (phErr) { msg.textContent = phErr; return; }
+    var gErr = window.__guardianCheck(profForm); if (gErr) { msg.textContent = gErr; return; }
     msg.textContent = "Saving…";
     if (uname !== myProfile.username && await usernameTaken(uname, me.id)) { msg.textContent = "@" + uname + " is taken."; return; }
     try {
       var dob = profForm.birth_date.value;
+      var minor = ageOn(dob) < 13;
       var pv = await sb.from("profile_private").upsert({
-        user_id: me.id, birth_date: dob, phone: profForm.phone.value.trim() || null, updated_at: new Date().toISOString()
+        user_id: me.id, birth_date: dob, phone: profForm.phone.value.trim() || null,
+        guardian_name: minor ? profForm.guardian_name.value.trim() : null,
+        guardian_phone: minor ? profForm.guardian_phone.value.trim() : null,
+        updated_at: new Date().toISOString()
       });
       if (pv.error) throw pv.error;
       var patch = {
@@ -702,7 +736,8 @@
         nationality: profForm.nationality.value,
         residence: profForm.residence.value,
         birth_year: new Date(dob).getFullYear(),
-        age_bracket: bracketFor(ageOn(dob))
+        age_bracket: bracketFor(ageOn(dob)),
+        guardian_managed: minor
       };
       if (profAvatarFile) patch.avatar_url = await uploadFile(profAvatarFile, "avatar");
       var up = await sb.from("profiles").update(patch).eq("id", me.id).select().single();

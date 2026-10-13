@@ -124,7 +124,7 @@
       <div class="grid-2">
         <label>Date of birth
           <input type="date" name="birth_date" required>
-          <small class="field-hint">You must be 13 or older. Only your age bracket is shown.</small>
+          <small class="field-hint">Ages 3 and up. Only the age bracket is shown publicly.</small>
         </label>
         <label>Gender
           <select name="gender" required>
@@ -160,6 +160,15 @@
       <label>Mobile number <span class="optional">optional · never shown publicly</span>
         <input type="tel" name="phone" autocomplete="tel" placeholder="+965 5xxx xxxx" maxlength="16">
       </label>
+      <div class="guardian-block" data-guardian hidden>
+        <p class="notice">Under 13 — a parent or guardian creates and manages this account. Guardian details are never shown publicly.</p>
+        <label>Guardian's full name
+          <input type="text" name="guardian_name" maxlength="60">
+        </label>
+        <label>Guardian's mobile number
+          <input type="tel" name="guardian_phone" placeholder="+965 5xxx xxxx" maxlength="16">
+        </label>
+      </div>
       <button type="submit" class="btn btn-primary">Join HALBA</button>
       <p class="switch-line">Already have an account?
         <button type="button" class="linklike" id="show-login">Log in</button>
@@ -341,6 +350,15 @@
     <label>Mobile number <span class="optional">optional · never shown publicly</span>
       <input type="tel" name="phone" autocomplete="tel" placeholder="+965 5xxx xxxx" maxlength="16">
     </label>
+    <div class="guardian-block" data-guardian hidden>
+      <p class="notice">Under 13 — a parent or guardian manages this account. Guardian details are never shown publicly.</p>
+      <label>Guardian's full name
+        <input type="text" name="guardian_name" maxlength="60">
+      </label>
+      <label>Guardian's mobile number
+        <input type="tel" name="guardian_phone" placeholder="+965 5xxx xxxx" maxlength="16">
+      </label>
+    </div>
     <button type="submit" class="btn btn-primary">Save profile</button>
     <p class="msg msg-dark" data-msg="profile" role="status"></p>
   </form>
