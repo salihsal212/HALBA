@@ -92,6 +92,15 @@ input, textarea { font: inherit; }
 .auth-card { color: var(--ink); }
 .auth-tag { color: #C9CFEA; margin: 2px 0 0; font-size: 1.02rem; }
 
+.land-eyebrow { display: inline-block; color: var(--coral); font-weight: 800; font-size: 0.85rem; margin-bottom: 6px; }
+.compete-grid { display: grid; gap: 10px; margin-top: 16px; }
+.compete-item { display: flex; flex-direction: column; gap: 3px; padding: 14px 16px; border-radius: 12px; background: linear-gradient(135deg, rgba(249,97,103,0.18), rgba(249,97,103,0.06)); border: 1px solid rgba(249,97,103,0.35); }
+.compete-item strong { font-size: 1.02rem; }
+.compete-item span { color: #D9DDF0; font-size: 0.9rem; line-height: 1.45; }
+.land-mission { margin-top: 22px; padding: 18px; border-radius: 14px; background: var(--coral); color: #fff; display: flex; flex-direction: column; gap: 4px; }
+.land-mission strong { font-size: 1.25rem; line-height: 1.2; }
+.land-mission span { color: #FFE6E7; font-size: 0.95rem; }
+
 /* reveal on scroll + marquee motion */
 @media (prefers-reduced-motion: no-preference) {
   .reveal { opacity: 0; transform: translateY(18px); transition: opacity 0.6s ease, transform 0.6s ease; transition-delay: calc(var(--d, 0) * 90ms); }
