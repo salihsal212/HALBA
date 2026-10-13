@@ -15,14 +15,70 @@
 </head>
 <body>
 
-<!-- ======================= AUTH ======================= -->
+<!-- ======================= LANDING + AUTH ======================= -->
 <section id="view-auth" class="view" hidden>
-  <div class="auth-wrap">
-    <header class="auth-hero">
-      <img class="logo logo-hero" src="brand/logo-horizontal-white.svg" alt="HALBA" width="680" height="132">
-      <p class="auth-tag">The arena where talent gets seen.</p>
-    </header>
 
+  <header class="land-hero">
+    <img class="logo logo-hero" src="brand/logo-horizontal-white.svg" alt="HALBA" width="680" height="132">
+    <h1 class="land-title">Where talent<br>gets <span class="accent">seen</span>.</h1>
+    <p class="land-lead">HALBA is a platform for talented young people to showcase what they can do, get real feedback, and find the opportunities their talent deserves.</p>
+    <div class="land-cta">
+      <button type="button" class="btn btn-primary" data-cta="signup">Create your profile</button>
+      <button type="button" class="btn btn-outline" data-cta="login">Log in</button>
+    </div>
+    <div class="marquee" aria-hidden="true">
+      <div class="marquee-track">
+        <span>Football</span><span>Swimming</span><span>Running</span><span>Gaming</span><span>Singing</span><span>Drawing</span><span>Coding</span><span>Basketball</span><span>Photography</span><span>Martial arts</span><span>Dance</span><span>Chess</span><span>Cricket</span><span>Calligraphy</span>
+        <span>Football</span><span>Swimming</span><span>Running</span><span>Gaming</span><span>Singing</span><span>Drawing</span><span>Coding</span><span>Basketball</span><span>Photography</span><span>Martial arts</span><span>Dance</span><span>Chess</span><span>Cricket</span><span>Calligraphy</span>
+      </div>
+    </div>
+    <img class="land-mark" src="brand/mark.svg" alt="" width="256" height="256">
+  </header>
+
+  <section class="land reveal">
+    <h2>Talent is everywhere. Opportunity isn't.</h2>
+    <p>Every street has someone exceptional at something. Most of them are never noticed — not because they lack ability, but because nobody was looking. HALBA is the arena where they get looked at.</p>
+    <div class="pillars">
+      <div class="pillar reveal" style="--d:0">
+        <span class="pillar-ico">🎯</span>
+        <strong>Showcase</strong>
+        <p>Post photos and videos of your skill — any skill — on a profile that's built to be seen.</p>
+      </div>
+      <div class="pillar reveal" style="--d:1">
+        <span class="pillar-ico">💬</span>
+        <strong>Get real feedback</strong>
+        <p>Claps from people who mean it, and comments with a purpose: appreciate, suggest, ask.</p>
+      </div>
+      <div class="pillar reveal" style="--d:2">
+        <span class="pillar-ico">🚀</span>
+        <strong>Get opportunities</strong>
+        <p>Teams, coaches and scouts can find you here — by skill, by city, by what you've actually done.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="land land-alt reveal">
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li class="reveal" style="--d:0"><span class="step-n">1</span><div><strong>Create your profile</strong><p>Your name, your @username, your city and your skill. Two minutes.</p></div></li>
+      <li class="reveal" style="--d:1"><span class="step-n">2</span><div><strong>Post your skill</strong><p>A photo or a video. A time, a score, a drawing, a track — whatever proves it.</p></div></li>
+      <li class="reveal" style="--d:2"><span class="step-n">3</span><div><strong>Get seen and get better</strong><p>The arena claps 👏 for what deserves it. People who know the skill suggest. Learners ask.</p></div></li>
+      <li class="reveal" style="--d:3"><span class="step-n">4</span><div><strong>Join or build a team</strong><p>Add the club you play for, or create one and bring your people in.</p></div></li>
+    </ol>
+  </section>
+
+  <section class="land reveal">
+    <h2>Built for</h2>
+    <div class="who">
+      <div class="who-item reveal" style="--d:0"><strong>Talented youth</strong><span>who want a stage, not an algorithm</span></div>
+      <div class="who-item reveal" style="--d:1"><strong>Teams &amp; academies</strong><span>who want to find players, not wait for them</span></div>
+      <div class="who-item reveal" style="--d:2"><strong>Coaches &amp; scouts</strong><span>who want proof, not promises</span></div>
+      <div class="who-item reveal" style="--d:3"><strong>Fans &amp; families</strong><span>who want to cheer for someone real</span></div>
+    </div>
+    <p class="land-line">Every street has a champion. This is where they're found.</p>
+  </section>
+
+  <div class="auth-wrap" id="auth-forms">
     <form id="form-login" class="card auth-card">
       <h2>Log in</h2>
       <label>Email
@@ -71,7 +127,7 @@
     </form>
 
     <p id="auth-msg" class="msg" role="status"></p>
-    <p class="auth-about"><button type="button" class="linklike linklike-light" id="auth-about-btn">What is HALBA?</button></p>
+    <p class="auth-about"><button type="button" class="linklike linklike-light" id="auth-about-btn">Read the HALBA story</button></p>
   </div>
 </section>
 

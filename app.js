@@ -57,6 +57,26 @@
   document.querySelectorAll(".back").forEach(function (b) {
     b.addEventListener("click", function () { if (b.dataset.back !== "__auth") show(b.dataset.back); });
   });
+  // landing: reveal on scroll + CTA buttons
+  (function () {
+    var els = document.querySelectorAll("#view-auth .reveal");
+    if ("IntersectionObserver" in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (en) { if (en.isIntersecting) { en.target.classList.add("is-in"); io.unobserve(en.target); } });
+      }, { threshold: 0.15 });
+      els.forEach(function (el) { io.observe(el); });
+    } else {
+      els.forEach(function (el) { el.classList.add("is-in"); });
+    }
+    document.querySelectorAll("[data-cta]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var signup = b.dataset.cta === "signup";
+        $("form-login").hidden = signup; $("form-signup").hidden = !signup; setAuthMsg("");
+        $("auth-forms").scrollIntoView({ behavior: "smooth", block: "start" });
+        setTimeout(function () { var f = signup ? $("form-signup") : $("form-login"); f.querySelector("input").focus({ preventScroll: true }); }, 500);
+      });
+    });
+  })();
   $("auth-about-btn").addEventListener("click", function () {
     $("view-auth").hidden = true;
     $("app-shell").hidden = false;
@@ -183,6 +203,7 @@
       $("app-shell").hidden = true;
       $("view-auth").hidden = false;
       setAuthMsg("");
+      window.scrollTo(0, 0);
     }
   });
 
