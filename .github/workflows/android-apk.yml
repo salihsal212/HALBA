@@ -37,8 +37,15 @@ jobs:
       - name: Sync web assets into Android project
         run: npx cap sync android
 
-      - name: Build debug APK
-        run: cd android && chmod +x gradlew && ./gradlew assembleDebug
+      - name: Build debug APK (retries if a dependency mirror hiccups)
+        run: |
+          cd android && chmod +x gradlew
+          for i in 1 2 3; do
+            ./gradlew assembleDebug --no-daemon && exit 0
+            echo "Build attempt $i failed — waiting 60s before retrying…"
+            sleep 60
+          done
+          exit 1
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
