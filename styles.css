@@ -128,6 +128,15 @@ input, textarea { font: inherit; }
   border: 1.5px solid var(--line); border-radius: 10px;
   background: #FBFBFD;
 }
+.auth-card select, .sheet-card select {
+  display: block; width: 100%; margin-top: 5px; padding: 11px 12px;
+  border: 1.5px solid var(--line); border-radius: 10px; background: #FBFBFD; font: inherit; color: var(--ink);
+}
+.auth-card select:focus, .sheet-card select:focus { outline: none; border-color: var(--navy-2); }
+.optional { font-weight: 400; color: var(--mute); font-size: 0.8rem; margin-left: 4px; }
+.auth-card .field-hint { color: var(--mute); }
+.profile-facts { display: flex; flex-wrap: wrap; gap: 6px 14px; justify-content: center; color: var(--mute); font-size: 0.88rem; margin: 2px 0 6px; }
+.profile-facts strong { color: var(--ink); font-weight: 700; }
 .auth-card input:focus, .compose-card textarea:focus {
   outline: none; border-color: var(--navy-2);
 }

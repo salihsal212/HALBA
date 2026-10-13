@@ -122,6 +122,28 @@
         <small class="field-hint" data-hint="username">Letters, numbers and _ only. This is how people find you.</small>
       </label>
       <div class="grid-2">
+        <label>Date of birth
+          <input type="date" name="birth_date" required>
+          <small class="field-hint">You must be 13 or older. Only your age bracket is shown.</small>
+        </label>
+        <label>Gender
+          <select name="gender" required>
+            <option value="">Select</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="unspecified">Prefer not to say</option>
+          </select>
+        </label>
+      </div>
+      <div class="grid-2">
+        <label>Nationality
+          <select name="nationality" required data-countries></select>
+        </label>
+        <label>Country of residence
+          <select name="residence" required data-countries data-default="Kuwait"></select>
+        </label>
+      </div>
+      <div class="grid-2">
         <label>City
           <input type="text" name="city" placeholder="Kuwait City" required maxlength="40">
         </label>
@@ -134,6 +156,9 @@
       </label>
       <label>Password
         <input type="password" name="password" autocomplete="new-password" required minlength="6">
+      </label>
+      <label>Mobile number <span class="optional">optional · never shown publicly</span>
+        <input type="tel" name="phone" autocomplete="tel" placeholder="+965 5xxx xxxx" maxlength="16">
       </label>
       <button type="submit" class="btn btn-primary">Join HALBA</button>
       <p class="switch-line">Already have an account?
@@ -264,7 +289,7 @@
       <h2>Edit profile</h2>
       <button type="button" class="sheet-close" data-close="sheet-profile" aria-label="Close">×</button>
     </div>
-    <p id="profile-notice" class="notice" hidden>Pick a username so people can find you.</p>
+    <p id="profile-notice" class="notice" hidden>A few details are missing — complete your profile to continue.</p>
     <label class="avatar-pick">
       <input type="file" name="avatar" accept="image/*">
       <span class="avatar avatar-lg" id="edit-avatar"></span>
@@ -282,6 +307,27 @@
       <small class="field-hint" data-hint="username">Letters, numbers and _ only.</small>
     </label>
     <div class="grid-2">
+      <label>Date of birth
+        <input type="date" name="birth_date" required>
+      </label>
+      <label>Gender
+        <select name="gender" required>
+          <option value="">Select</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="unspecified">Prefer not to say</option>
+        </select>
+      </label>
+    </div>
+    <div class="grid-2">
+      <label>Nationality
+        <select name="nationality" required data-countries></select>
+      </label>
+      <label>Country of residence
+        <select name="residence" required data-countries></select>
+      </label>
+    </div>
+    <div class="grid-2">
       <label>City
         <input type="text" name="city" required maxlength="40">
       </label>
@@ -291,6 +337,9 @@
     </div>
     <label>About
       <textarea name="about" rows="3" maxlength="200" placeholder="A line or two about you and your skill"></textarea>
+    </label>
+    <label>Mobile number <span class="optional">optional · never shown publicly</span>
+      <input type="tel" name="phone" autocomplete="tel" placeholder="+965 5xxx xxxx" maxlength="16">
     </label>
     <button type="submit" class="btn btn-primary">Save profile</button>
     <p class="msg msg-dark" data-msg="profile" role="status"></p>

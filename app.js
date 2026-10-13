@@ -126,6 +126,41 @@
     });
   }
 
+  // ---------- countries, age ----------
+  var COUNTRIES = ["Kuwait", "Saudi Arabia", "United Arab Emirates", "Qatar", "Bahrain", "Oman", "Egypt", "Jordan", "Lebanon", "Iraq", "Syria", "Palestine", "Yemen", "India", "Pakistan", "Bangladesh", "Sri Lanka", "Nepal", "Philippines", "Indonesia", "Afghanistan", "Algeria", "Argentina", "Australia", "Austria", "Azerbaijan", "Belgium", "Brazil", "Cameroon", "Canada", "Chile", "China", "Colombia", "Croatia", "Czech Republic", "Denmark", "Ethiopia", "Finland", "France", "Germany", "Ghana", "Greece", "Hungary", "Iran", "Ireland", "Italy", "Japan", "Kazakhstan", "Kenya", "Libya", "Malaysia", "Mexico", "Morocco", "Netherlands", "New Zealand", "Nigeria", "Norway", "Poland", "Portugal", "Romania", "Russia", "Senegal", "Serbia", "Singapore", "Somalia", "South Africa", "South Korea", "Spain", "Sudan", "Sweden", "Switzerland", "Tanzania", "Thailand", "Tunisia", "Turkey", "Uganda", "Ukraine", "United Kingdom", "United States", "Uzbekistan", "Vietnam", "Other"];
+  document.querySelectorAll("select[data-countries]").forEach(function (sel) {
+    var def = sel.dataset.default || "";
+    sel.innerHTML = '<option value="">Select</option>' + COUNTRIES.map(function (c) {
+      return '<option value="' + c + '"' + (c === def ? " selected" : "") + ">" + c + "</option>";
+    }).join("");
+  });
+  function ageOn(dobStr, on) {
+    var d = new Date(dobStr), t = on || new Date();
+    var a = t.getFullYear() - d.getFullYear();
+    var m = t.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && t.getDate() < d.getDate())) a--;
+    return a;
+  }
+  function bracketFor(age) { return age < 12 ? "U12" : age < 15 ? "U15" : age < 18 ? "U18" : "OPEN"; }
+  function bracketLabel(b) { return { U12: "Under 12", U15: "Under 15", U18: "Under 18", OPEN: "Open (18+)" }[b] || ""; }
+  function validDob(dobStr) {
+    if (!dobStr) return "Date of birth is required.";
+    var age = ageOn(dobStr);
+    if (isNaN(age) || age > 100) return "Please enter a valid date of birth.";
+    if (age < 13) return "You must be 13 or older to join HALBA.";
+    return null;
+  }
+  function validPhone(p) {
+    p = (p || "").trim();
+    if (!p) return null;
+    return /^\+?[0-9 ]{7,16}$/.test(p) ? null : "Mobile number: digits only, e.g. +965 5xxx xxxx";
+  }
+  (function () {
+    var max = new Date(); max.setFullYear(max.getFullYear() - 13);
+    var iso = max.toISOString().slice(0, 10);
+    document.querySelectorAll('input[name="birth_date"]').forEach(function (i) { i.max = iso; });
+  })();
+
   // ---------- auth ----------
   function setAuthMsg(t) { $("auth-msg").textContent = t || ""; }
 
@@ -141,6 +176,8 @@
     var f = e.target;
     var uname = f.username.value.trim().toLowerCase();
     if (!USERNAME_RE.test(uname)) return setAuthMsg("Username: 3–20 characters, letters, numbers and _ only.");
+    var dobErr = validDob(f.birth_date.value); if (dobErr) return setAuthMsg(dobErr);
+    var phErr = validPhone(f.phone.value); if (phErr) return setAuthMsg(phErr);
     setAuthMsg("Checking username…");
     if (await usernameTaken(uname)) return setAuthMsg("@" + uname + " is already taken — try another.");
     setAuthMsg("Creating your profile…");
@@ -151,7 +188,12 @@
         name: f.name.value.trim(),
         username: uname,
         city: f.city.value.trim(),
-        skill: f.skill.value.trim()
+        skill: f.skill.value.trim(),
+        gender: f.gender.value,
+        nationality: f.nationality.value,
+        residence: f.residence.value,
+        birth_date: f.birth_date.value,
+        phone: f.phone.value.trim() || null
       } }
     });
     if (res.error) return setAuthMsg(res.error.message);
@@ -179,14 +221,23 @@
     var got = await sb.from("profiles").select("*").eq("id", me.id).maybeSingle();
     if (got.data) { myProfile = got.data; return; }
     var md = me.user_metadata || {};
+    var age = md.birth_date ? ageOn(md.birth_date) : null;
     var ins = await sb.from("profiles").insert({
       id: me.id,
       name: md.name || "Athlete",
       username: md.username || null,
       city: md.city || "",
-      skill: md.skill || ""
+      skill: md.skill || "",
+      gender: md.gender || null,
+      nationality: md.nationality || null,
+      residence: md.residence || null,
+      birth_year: md.birth_date ? new Date(md.birth_date).getFullYear() : null,
+      age_bracket: age != null ? bracketFor(age) : null
     }).select().single();
     myProfile = ins.data || { id: me.id, name: md.name || "Athlete", city: "", skill: "" };
+    if (md.birth_date || md.phone) {
+      await sb.from("profile_private").upsert({ user_id: me.id, birth_date: md.birth_date || null, phone: md.phone || null });
+    }
   }
 
   sb.auth.onAuthStateChange(async function (_event, session) {
@@ -197,7 +248,7 @@
       $("app-shell").hidden = false;
       $("topbar-skill").textContent = myProfile.skill || "";
       show("feed");
-      if (!myProfile.username) openEditProfile(true);
+      if (!myProfile.username || !myProfile.gender || !myProfile.nationality || !myProfile.residence || !myProfile.birth_year) openEditProfile(true);
     } else {
       myProfile = null;
       $("app-shell").hidden = true;
@@ -495,6 +546,12 @@
             (prof.skill ? '<span class="chip chip-skill">' + esc(prof.skill) + "</span>" : "") +
             (prof.city ? "<span>" + esc(prof.city) + "</span>" : "") +
           "</p>" +
+          '<p class="profile-facts">' +
+            (prof.age_bracket ? "<span><strong>" + esc(bracketLabel(prof.age_bracket)) + "</strong></span>" : "") +
+            (prof.birth_year ? "<span>Born " + esc(prof.birth_year) + "</span>" : "") +
+            (prof.nationality ? "<span>" + esc(prof.nationality) + "</span>" : "") +
+            (prof.residence && prof.residence !== prof.nationality ? "<span>Lives in " + esc(prof.residence) + "</span>" : "") +
+          "</p>" +
           teamHtml +
           (prof.about ? '<p class="profile-about">' + esc(prof.about) + "</p>" : (isMe ? '<p class="profile-about is-empty">Add a line about yourself.</p>' : "")) +
           '<div class="profile-stats">' +
@@ -529,8 +586,16 @@
   // ---------- edit profile sheet ----------
   var profForm = $("form-profile");
   var profAvatarFile = null;
-  function openEditProfile(needUsername) {
+  var myPrivate = null;
+  async function openEditProfile(needUsername) {
     $("profile-notice").hidden = !needUsername;
+    var pv = await sb.from("profile_private").select("*").eq("user_id", me.id).maybeSingle();
+    myPrivate = pv.data || {};
+    profForm.birth_date.value = myPrivate.birth_date || "";
+    profForm.phone.value = myPrivate.phone || "";
+    profForm.gender.value = myProfile.gender || "";
+    profForm.nationality.value = myProfile.nationality || "";
+    profForm.residence.value = myProfile.residence || "Kuwait";
     profForm.name.value = myProfile.name || "";
     profForm.username.value = myProfile.username || "";
     profForm.city.value = myProfile.city || "";
@@ -557,15 +622,27 @@
     var msg = profForm.querySelector('[data-msg="profile"]');
     var uname = profForm.username.value.trim().toLowerCase();
     if (!USERNAME_RE.test(uname)) { msg.textContent = "Username: 3–20 characters, letters, numbers and _ only."; return; }
+    var dobErr = validDob(profForm.birth_date.value); if (dobErr) { msg.textContent = dobErr; return; }
+    var phErr = validPhone(profForm.phone.value); if (phErr) { msg.textContent = phErr; return; }
     msg.textContent = "Saving…";
     if (uname !== myProfile.username && await usernameTaken(uname, me.id)) { msg.textContent = "@" + uname + " is taken."; return; }
     try {
+      var dob = profForm.birth_date.value;
+      var pv = await sb.from("profile_private").upsert({
+        user_id: me.id, birth_date: dob, phone: profForm.phone.value.trim() || null, updated_at: new Date().toISOString()
+      });
+      if (pv.error) throw pv.error;
       var patch = {
         name: profForm.name.value.trim(),
         username: uname,
         city: profForm.city.value.trim(),
         skill: profForm.skill.value.trim(),
-        about: profForm.about.value.trim()
+        about: profForm.about.value.trim(),
+        gender: profForm.gender.value,
+        nationality: profForm.nationality.value,
+        residence: profForm.residence.value,
+        birth_year: new Date(dob).getFullYear(),
+        age_bracket: bracketFor(ageOn(dob))
       };
       if (profAvatarFile) patch.avatar_url = await uploadFile(profAvatarFile, "avatar");
       var up = await sb.from("profiles").update(patch).eq("id", me.id).select().single();
