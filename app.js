@@ -515,6 +515,13 @@
     var mem = await sb.from("team_members")
       .select("status, role, teams(id, name, handle, logo_url)")
       .eq("user_id", userId);
+    var supRes = await Promise.all([
+      sb.from("supports").select("supporter_id").eq("supported_id", userId),
+      sb.from("supports").select("supported_id").eq("supporter_id", userId)
+    ]);
+    var supporters = supRes[0].data || [];
+    var supporting = supRes[1].data || [];
+    var iSupport = me && supporters.some(function (r) { return r.supporter_id === me.id; });
     var teams = (mem.data || []).filter(function (m) { return m.teams; });
 
     var res = await sb.from("posts")
@@ -556,9 +563,16 @@
           (prof.about ? '<p class="profile-about">' + esc(prof.about) + "</p>" : (isMe ? '<p class="profile-about is-empty">Add a line about yourself.</p>' : "")) +
           '<div class="profile-stats">' +
             "<div><strong>" + rows.length + "</strong><span>posts</span></div>" +
-            "<div><strong>" + clapsEarned + "</strong><span>claps earned</span></div>" +
-            "<div><strong>" + teams.filter(function (m) { return m.status === "approved"; }).length + "</strong><span>teams</span></div>" +
+            "<div><strong>" + clapsEarned + "</strong><span>claps</span></div>" +
+            '<button class="stat-btn" id="stat-supporters"><strong>' + supporters.length + "</strong><span>supporters</span></button>" +
+            '<button class="stat-btn" id="stat-supporting"><strong>' + supporting.length + "</strong><span>supporting</span></button>" +
           "</div>" +
+          (!isMe && me
+            ? '<div class="profile-actions">' +
+                '<button class="btn btn-small ' + (iSupport ? "btn-ghost" : "btn-primary") + '" id="btn-support" aria-pressed="' + (iSupport ? "true" : "false") + '">' +
+                  (iSupport ? "Supporting ✓" : "Support") + "</button>" +
+              "</div>"
+            : "") +
           (isMe
             ? '<div class="profile-actions">' +
                 '<button class="btn btn-primary btn-small" id="btn-edit-profile">Edit profile</button>' +
@@ -578,9 +592,55 @@
       b.addEventListener("click", function () { show("team", b.dataset.team); });
     });
     var go = $("go-teams"); if (go) go.addEventListener("click", function () { show("teams"); });
+    var sup = $("btn-support");
+    if (sup) sup.addEventListener("click", async function () {
+      var on = sup.getAttribute("aria-pressed") === "true";
+      sup.disabled = true;
+      var r = on
+        ? await sb.from("supports").delete().match({ supporter_id: me.id, supported_id: userId })
+        : await sb.from("supports").insert({ supporter_id: me.id, supported_id: userId });
+      sup.disabled = false;
+      if (r.error) return;
+      on = !on;
+      sup.setAttribute("aria-pressed", String(on));
+      sup.textContent = on ? "Supporting ✓" : "Support";
+      sup.className = "btn btn-small " + (on ? "btn-ghost" : "btn-primary");
+      var c = $("stat-supporters").querySelector("strong");
+      c.textContent = Math.max(0, +c.textContent + (on ? 1 : -1));
+    });
+    $("stat-supporters").addEventListener("click", function () { openPeopleList("Supporters", "supports", "supporter_id", "supported_id", userId); });
+    $("stat-supporting").addEventListener("click", function () { openPeopleList("Supporting", "supports", "supported_id", "supporter_id", userId); });
     var ed = $("btn-edit-profile"); if (ed) ed.addEventListener("click", function () { openEditProfile(false); });
     var lo = $("btn-logout"); if (lo) lo.addEventListener("click", function () { sb.auth.signOut(); });
     var ab = $("btn-about"); if (ab) ab.addEventListener("click", function () { $("about-back").dataset.back = "profile"; show("about"); });
+  }
+
+  // ---------- people list sheet (supporters / supporting) ----------
+  async function openPeopleList(title, table, pickCol, whereCol, userId) {
+    $("list-title").textContent = title;
+    var body = $("list-body");
+    body.innerHTML = '<p class="empty">Loading…</p>';
+    openSheet("sheet-list");
+    var res = await sb.from(table)
+      .select(pickCol + ", profiles!" + table + "_" + pickCol + "_fkey(id, name, username, avatar_url, skill, city)")
+      .eq(whereCol, userId)
+      .order("created_at", { ascending: false })
+      .limit(200);
+    var rows = (res.data || []).map(function (r) { return r.profiles; }).filter(Boolean);
+    body.innerHTML = rows.length ? "" : '<p class="empty">' + (title === "Supporters" ? "No supporters yet." : "Not supporting anyone yet.") + "</p>";
+    rows.forEach(function (p) {
+      var el = document.createElement("button");
+      el.className = "member member-btn";
+      el.innerHTML = avatarHtml(p, "avatar-sm") +
+        '<div class="member-body"><strong>' + esc(p.name) + "</strong>" +
+        "<small>" + (p.username ? "@" + esc(p.username) : "") + (p.skill ? " · " + esc(p.skill) : "") + (p.city ? " · " + esc(p.city) : "") + "</small></div>";
+      el.addEventListener("click", function () {
+        closeSheet("sheet-list");
+        $("profile-back").hidden = false; $("profile-back").dataset.back = "feed";
+        show("profile", p.id);
+      });
+      body.appendChild(el);
+    });
   }
 
   // ---------- edit profile sheet ----------

@@ -300,11 +300,16 @@ img.avatar { object-fit: cover; }
 .profile-about.is-empty { color: var(--mute); font-style: italic; }
 .profile-noteam { margin: 8px 0 0; color: var(--mute); font-size: 0.9rem; }
 .profile-stats {
-  display: flex; gap: 28px; justify-content: center; margin-top: 16px;
+  display: flex; gap: 22px; flex-wrap: wrap; justify-content: center; margin-top: 16px;
   padding-top: 14px; border-top: 1px solid var(--line);
 }
 .profile-stats strong { font-size: 1.4rem; display: block; line-height: 1.1; }
 .profile-stats span { color: var(--mute); font-size: 0.82rem; }
+.stat-btn { background: none; border: none; padding: 0; font: inherit; color: inherit; cursor: pointer; }
+.stat-btn:hover strong { color: var(--coral-deep); }
+.people-list { padding: 0 4px; }
+.member-btn { background: none; border: none; width: 100%; text-align: left; padding: 10px 4px; cursor: pointer; font: inherit; color: inherit; }
+.member-btn:hover { background: #F6F7FB; }
 .profile-actions { display: flex; gap: 10px; justify-content: center; align-items: center; margin-top: 14px; flex-wrap: wrap; }
 .profile-actions .btn { width: auto; }
 .btn-small { padding: 8px 14px; font-size: 0.9rem; }
