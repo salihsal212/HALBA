@@ -94,6 +94,8 @@ Notes:
 - Profiles: photo, unique @username, about, date of birth (ages 3+; only birth year and age bracket are public; under-13 accounts are guardian-managed with guardian name and mobile kept private), gender, nationality, country of residence, city, skill; optional mobile number kept in a private table only the owner can read; tap any name to open a profile
 - Teams: anyone creates a team (page) and becomes its admin; players request to join, the admin approves or declines; approved teams show on the player's profile
 - Support (one-way follow): Support button on profiles, supporters / supporting counts, tap to see the list
+- Arena tools: search people by name, @username or talent; filter the feed by talent (list of talents members actually use, with counts)
+- Talent suggestions while typing (signup, edit profile, create team): talents already on HALBA first, then a list of common ones; spelling is normalised so filters group correctly
 - About HALBA page (from login screen and profile)
 - Profile page with post count and likes earned
 - Row-level security: users can only write as themselves; everyone can read

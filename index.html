@@ -147,8 +147,8 @@
         <label>City
           <input type="text" name="city" placeholder="Kuwait City" required maxlength="40">
         </label>
-        <label>Your skill
-          <input type="text" name="skill" placeholder="Football" required maxlength="40">
+        <label>Your talent
+          <input type="text" name="skill" placeholder="Football" required maxlength="40" autocomplete="off" data-skill-suggest>
         </label>
       </div>
       <label>Email
@@ -189,6 +189,16 @@
 
   <!-- FEED -->
   <main id="view-feed" class="view" hidden>
+    <div class="feed-tools">
+      <button type="button" id="btn-search" class="tool-btn" aria-label="Search people">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <span>Search people</span>
+      </button>
+      <button type="button" id="btn-filter" class="tool-btn" aria-label="Filter by talent">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16l-6 7v6l-4 2v-8z"/></svg>
+        <span id="filter-label">All talents</span>
+      </button>
+    </div>
     <div id="feed-list" class="feed"></div>
     <p id="feed-empty" class="empty" hidden>
       The arena is quiet. Be the first to post your skill.
@@ -340,8 +350,8 @@
       <label>City
         <input type="text" name="city" required maxlength="40">
       </label>
-      <label>Skill
-        <input type="text" name="skill" required maxlength="40">
+      <label>Talent
+        <input type="text" name="skill" required maxlength="40" autocomplete="off" data-skill-suggest>
       </label>
     </div>
     <label>About
@@ -388,8 +398,8 @@
       <small class="field-hint" data-hint="handle">Letters, numbers and _ only.</small>
     </label>
     <div class="grid-2">
-      <label>Skill
-        <input type="text" name="skill" maxlength="40" placeholder="Football">
+      <label>Talent
+        <input type="text" name="skill" maxlength="40" placeholder="Football" autocomplete="off" data-skill-suggest>
       </label>
       <label>City
         <input type="text" name="city" maxlength="40" placeholder="Salmiya">
@@ -401,6 +411,30 @@
     <button type="submit" class="btn btn-primary">Create team</button>
     <p class="msg msg-dark" data-msg="team" role="status"></p>
   </form>
+</div>
+
+<!-- ======================= SEARCH PEOPLE SHEET ======================= -->
+<div id="sheet-search" class="sheet" hidden>
+  <div class="sheet-card sheet-tall">
+    <div class="sheet-head">
+      <h2>Search people</h2>
+      <button type="button" class="sheet-close" data-close="sheet-search" aria-label="Close">×</button>
+    </div>
+    <input type="search" id="people-search" class="search" placeholder="Name, @username or talent" autocomplete="off">
+    <div id="search-body" class="member-list people-list"><p class="empty">Type a name, @username or talent.</p></div>
+  </div>
+</div>
+
+<!-- ======================= FILTER BY TALENT SHEET ======================= -->
+<div id="sheet-filter" class="sheet" hidden>
+  <div class="sheet-card sheet-tall">
+    <div class="sheet-head">
+      <h2>Filter by talent</h2>
+      <button type="button" class="sheet-close" data-close="sheet-filter" aria-label="Close">×</button>
+    </div>
+    <input type="search" id="filter-search" class="search" placeholder="Find a talent" autocomplete="off">
+    <div id="filter-body" class="filter-chips"></div>
+  </div>
 </div>
 
 <!-- ======================= PEOPLE LIST SHEET ======================= -->

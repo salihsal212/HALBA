@@ -126,6 +126,86 @@
     });
   }
 
+  // ---------- talents: common list + what members already use ----------
+  var COMMON_SKILLS = ["Football", "Swimming", "Running", "Basketball", "Cricket", "Volleyball", "Tennis", "Padel", "Table tennis",
+    "Badminton", "Handball", "Squash", "Athletics", "Cycling", "Gymnastics", "Karate", "Taekwondo", "Judo", "Boxing", "Kickboxing",
+    "Jiu-jitsu", "Wrestling", "Fencing", "Archery", "Shooting", "Horse riding", "Falconry", "Camel racing", "Diving", "Sailing",
+    "Jet ski", "Kitesurfing", "Fishing", "Skateboarding", "Parkour", "Fitness", "Weightlifting", "Chess", "Esports", "Rubik's cube",
+    "Memory", "Mathematics", "Science", "Robotics", "Coding", "Game development", "3D design", "Animation", "Graphic design",
+    "Drawing", "Painting", "Calligraphy", "Photography", "Videography", "Filmmaking", "Singing", "Quran recitation", "Oud",
+    "Piano", "Guitar", "Violin", "Drums", "Music production", "DJ", "Rap", "Beatbox", "Dance", "Acting", "Comedy", "Magic",
+    "Poetry", "Writing", "Storytelling", "Public speaking", "Debate", "Languages", "Sign language", "Cooking", "Baking",
+    "Fashion design", "Makeup", "Woodwork", "Pottery", "Origami"];
+  var skillIndex = null; // [{ name, count }] from profiles, most used first
+  var skillIndexAt = 0;
+  async function loadSkillIndex(force) {
+    if (skillIndex && !force && Date.now() - skillIndexAt < 60000) return skillIndex;
+    var res = await sb.from("profiles").select("skill").not("skill", "is", null).limit(2000);
+    var counts = {};
+    (res.data || []).forEach(function (r) {
+      var s = String(r.skill || "").trim(); if (!s) return;
+      var k = s.toLowerCase();
+      if (!counts[k]) counts[k] = { name: s, count: 0 };
+      counts[k].count++;
+    });
+    skillIndex = Object.keys(counts).map(function (k) { return counts[k]; })
+      .sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name); });
+    skillIndexAt = Date.now();
+    return skillIndex;
+  }
+  // members' talents first (most used first), then common ones not yet used
+  function allSkills() {
+    var seen = {}, out = [];
+    (skillIndex || []).forEach(function (s) { seen[s.name.toLowerCase()] = 1; out.push(s.name); });
+    COMMON_SKILLS.forEach(function (s) { if (!seen[s.toLowerCase()]) out.push(s); });
+    return out;
+  }
+  function matchSkills(q, limit) {
+    q = String(q || "").trim().toLowerCase();
+    var all = allSkills();
+    if (!q) return all.slice(0, limit);
+    var starts = [], has = [];
+    all.forEach(function (s) {
+      var l = s.toLowerCase();
+      if (l.indexOf(q) === 0) starts.push(s); else if (l.indexOf(q) !== -1) has.push(s);
+    });
+    return starts.concat(has).slice(0, limit);
+  }
+  // keep one spelling per talent so filters group correctly ("football" -> "Football")
+  function canonSkill(v) {
+    v = String(v || "").trim().replace(/\s+/g, " ");
+    if (!v) return v;
+    var l = v.toLowerCase();
+    var hit = allSkills().filter(function (s) { return s.toLowerCase() === l; })[0];
+    return hit || (v.charAt(0).toUpperCase() + v.slice(1));
+  }
+  // suggestions under any input[data-skill-suggest]
+  function wireSkillSuggest(input) {
+    var box = document.createElement("div");
+    box.className = "suggest"; box.hidden = true;
+    input.insertAdjacentElement("afterend", box);
+    var hideT;
+    function render() {
+      var items = matchSkills(input.value, input.value.trim() ? 8 : 12);
+      var cur = input.value.trim().toLowerCase();
+      items = items.filter(function (s) { return s.toLowerCase() !== cur; });
+      box.hidden = items.length === 0;
+      box.innerHTML = (input.value.trim() ? "" : '<small class="suggest-title">Popular on HALBA</small>') +
+        items.map(function (s) { return '<button type="button" class="suggest-chip">' + esc(s) + "</button>"; }).join("");
+    }
+    input.addEventListener("focus", function () { loadSkillIndex().then(render); render(); });
+    input.addEventListener("input", render);
+    input.addEventListener("blur", function () { hideT = setTimeout(function () { box.hidden = true; }, 150); });
+    box.addEventListener("mousedown", function (e) { e.preventDefault(); });
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest(".suggest-chip"); if (!b) return;
+      clearTimeout(hideT);
+      input.value = b.textContent; box.hidden = true;
+      input.dispatchEvent(new Event("change"));
+    });
+  }
+  document.querySelectorAll("input[data-skill-suggest]").forEach(wireSkillSuggest);
+
   // ---------- countries, age ----------
   var COUNTRIES = ["Kuwait", "Saudi Arabia", "United Arab Emirates", "Qatar", "Bahrain", "Oman", "Egypt", "Jordan", "Lebanon", "Iraq", "Syria", "Palestine", "Yemen", "India", "Pakistan", "Bangladesh", "Sri Lanka", "Nepal", "Philippines", "Indonesia", "Afghanistan", "Algeria", "Argentina", "Australia", "Austria", "Azerbaijan", "Belgium", "Brazil", "Cameroon", "Canada", "Chile", "China", "Colombia", "Croatia", "Czech Republic", "Denmark", "Ethiopia", "Finland", "France", "Germany", "Ghana", "Greece", "Hungary", "Iran", "Ireland", "Italy", "Japan", "Kazakhstan", "Kenya", "Libya", "Malaysia", "Mexico", "Morocco", "Netherlands", "New Zealand", "Nigeria", "Norway", "Poland", "Portugal", "Romania", "Russia", "Senegal", "Serbia", "Singapore", "Somalia", "South Africa", "South Korea", "Spain", "Sudan", "Sweden", "Switzerland", "Tanzania", "Thailand", "Tunisia", "Turkey", "Uganda", "Ukraine", "United Kingdom", "United States", "Uzbekistan", "Vietnam", "Other"];
   document.querySelectorAll("select[data-countries]").forEach(function (sel) {
@@ -209,7 +289,7 @@
         name: f.name.value.trim(),
         username: uname,
         city: f.city.value.trim(),
-        skill: f.skill.value.trim(),
+        skill: canonSkill(f.skill.value),
         gender: f.gender.value,
         nationality: f.nationality.value,
         residence: f.residence.value,
@@ -448,11 +528,14 @@
     return card;
   }
 
+  var feedSkill = ""; // "" = all talents
   async function loadFeed() {
-    var res = await sb.from("posts")
-      .select("*, profiles!posts_user_id_fkey(name, city, skill, username, avatar_url), claps(user_id), comments(id)")
+    var q = sb.from("posts")
+      .select("*, profiles!posts_user_id_fkey" + (feedSkill ? "!inner" : "") + "(name, city, skill, username, avatar_url), claps(user_id), comments(id)")
       .order("created_at", { ascending: false })
       .limit(50);
+    if (feedSkill) q = q.ilike("profiles.skill", feedSkill);
+    var res = await q;
     var list = $("feed-list");
     list.innerHTML = "";
     var rows = res.data || [];
@@ -461,12 +544,85 @@
       $("feed-empty").hidden = false;
       return;
     }
-    $("feed-empty").textContent = "The arena is quiet. Be the first to post your skill.";
+    $("feed-empty").textContent = feedSkill ? "No " + feedSkill + " posts yet. Be the first." : "The arena is quiet. Be the first to post your skill.";
     $("feed-empty").hidden = rows.length > 0;
     rows.forEach(function (p) {
       list.appendChild(postCard(p, { canDelete: me && p.user_id === me.id }));
     });
   }
+
+  // ---------- search people ----------
+  function personRow(p, onPick) {
+    var el = document.createElement("button");
+    el.type = "button"; el.className = "member member-btn";
+    el.innerHTML = avatarHtml(p, "avatar-sm") +
+      '<div class="member-body"><strong>' + esc(p.name) + "</strong>" +
+      "<small>" + (p.username ? "@" + esc(p.username) : "") + (p.skill ? " · " + esc(p.skill) : "") + (p.city ? " · " + esc(p.city) : "") + "</small></div>";
+    el.addEventListener("click", function () { onPick(p); });
+    return el;
+  }
+  function openPerson(p, closeId) {
+    closeSheet(closeId);
+    $("profile-back").hidden = false; $("profile-back").dataset.back = "feed";
+    show("profile", p.id);
+  }
+  var searchT, searchSeq = 0;
+  async function runPeopleSearch(q) {
+    var body = $("search-body");
+    q = q.trim().replace(/^@/, "");
+    if (q.length < 2) { body.innerHTML = '<p class="empty">Type a name, @username or talent.</p>'; return; }
+    var seq = ++searchSeq;
+    body.innerHTML = '<p class="empty">Searching…</p>';
+    var like = "%" + q.replace(/[%_,()]/g, " ") + "%";
+    var res = await sb.from("profiles")
+      .select("id, name, username, avatar_url, skill, city")
+      .or("name.ilike." + like + ",username.ilike." + like + ",skill.ilike." + like)
+      .order("name").limit(30);
+    if (seq !== searchSeq) return;
+    var rows = res.data || [];
+    body.innerHTML = rows.length ? "" : '<p class="empty">No one found for “' + esc(q) + '”.</p>';
+    rows.forEach(function (p) { body.appendChild(personRow(p, function (pp) { openPerson(pp, "sheet-search"); })); });
+  }
+  $("btn-search").addEventListener("click", function () {
+    openSheet("sheet-search");
+    setTimeout(function () { $("people-search").focus(); }, 50);
+  });
+  $("people-search").addEventListener("input", function () {
+    clearTimeout(searchT); var v = this.value;
+    searchT = setTimeout(function () { runPeopleSearch(v); }, 300);
+  });
+
+  // ---------- filter feed by talent ----------
+  function renderFilterChips(q) {
+    var body = $("filter-body");
+    q = String(q || "").trim().toLowerCase();
+    var items = (skillIndex || []).filter(function (s) { return !q || s.name.toLowerCase().indexOf(q) !== -1; });
+    body.innerHTML = (q ? "" : '<button type="button" class="filter-chip' + (feedSkill ? "" : " is-on") + '" data-skill="">All talents</button>') +
+      items.map(function (s) {
+        return '<button type="button" class="filter-chip' + (feedSkill.toLowerCase() === s.name.toLowerCase() ? " is-on" : "") +
+          '" data-skill="' + esc(s.name) + '">' + esc(s.name) + ' <span class="chip-n">' + s.count + "</span></button>";
+      }).join("");
+    if (!items.length && q) body.innerHTML += '<p class="empty">No member has “' + esc(q) + '” as a talent yet.</p>';
+  }
+  function setFeedSkill(skill) {
+    feedSkill = skill || "";
+    $("filter-label").textContent = feedSkill || "All talents";
+    $("btn-filter").classList.toggle("is-on", !!feedSkill);
+    loadFeed();
+  }
+  $("btn-filter").addEventListener("click", async function () {
+    $("filter-search").value = "";
+    $("filter-body").innerHTML = '<p class="empty">Loading…</p>';
+    openSheet("sheet-filter");
+    await loadSkillIndex(true);
+    renderFilterChips("");
+  });
+  $("filter-search").addEventListener("input", function () { renderFilterChips(this.value); });
+  $("filter-body").addEventListener("click", function (e) {
+    var b = e.target.closest(".filter-chip"); if (!b) return;
+    closeSheet("sheet-filter");
+    setFeedSkill(b.dataset.skill);
+  });
 
   // ---------- compose ----------
   var mediaInput = document.querySelector('#form-post input[name="media"]');
@@ -730,7 +886,7 @@
         name: profForm.name.value.trim(),
         username: uname,
         city: profForm.city.value.trim(),
-        skill: profForm.skill.value.trim(),
+        skill: canonSkill(profForm.skill.value),
         about: profForm.about.value.trim(),
         gender: profForm.gender.value,
         nationality: profForm.nationality.value,
@@ -744,6 +900,7 @@
       if (up.error) throw up.error;
       myProfile = up.data;
       $("topbar-skill").textContent = myProfile.skill || "";
+      skillIndex = null; // talent list changed
       closeSheet("sheet-profile");
       show("profile", me.id);
     } catch (err) {
