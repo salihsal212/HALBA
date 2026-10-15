@@ -1,7 +1,7 @@
 /* HALBA service worker — network-first for the app shell (updates arrive on
    the next visit), cache as a fallback when offline. Feed data always comes
    from the network (it's live content). */
-var CACHE = "halba-shell-v11";
+var CACHE = "halba-shell-v12";
 var SHELL = ["./", "index.html", "styles.css", "app.js", "config.js",
   "manifest.webmanifest", "icons/icon-192.png", "icons/icon-512.png",
   "icons/favicon-32.png", "brand/logo-horizontal-white.svg", "brand/mark.svg"];

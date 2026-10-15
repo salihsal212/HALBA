@@ -1,5 +1,5 @@
 /* ====================================================================
-   HALBA — profiles, posts, claps, typed comments, teams
+   HALBA — profiles, posts, claps, typed comments, teams, events
    Stack: supabase-js v2 (auth, Postgres, storage). No build step.
 ==================================================================== */
 (function () {
@@ -36,10 +36,10 @@
     return Math.floor(s / 86400) + "d";
   }
 
-  var views = ["feed", "compose", "teams", "team", "profile", "about"];
+  var views = ["feed", "compose", "teams", "team", "events", "event", "profile", "about"];
   function show(view, arg) {
     views.forEach(function (v) { $("view-" + v).hidden = v !== view; });
-    var navKey = view === "team" ? "teams" : view;
+    var navKey = view === "team" ? "teams" : view === "event" ? "events" : view;
     document.querySelectorAll(".nav-btn").forEach(function (b) {
       b.classList.toggle("is-active", b.dataset.nav === navKey);
     });
@@ -47,6 +47,8 @@
     if (view === "feed") loadFeed();
     if (view === "teams") loadTeams();
     if (view === "team") loadTeam(arg);
+    if (view === "events") loadEvents();
+    if (view === "event") loadEvent(arg);
     if (view === "profile") loadProfile(arg || (me && me.id));
   }
   function openSheet(id) { $(id).hidden = false; document.body.classList.add("no-scroll"); }
@@ -710,6 +712,16 @@
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     var rows = res.data || [];
+    var rr = await sb.from("event_results").select("rank, note, events(id, title, kind, starts_at)").eq("user_id", userId);
+    var achievements = (rr.data || []).filter(function (r) { return r.events; })
+      .sort(function (a, b) { return a.events.starts_at < b.events.starts_at ? 1 : -1; });
+    var achHtml = achievements.length
+      ? '<div class="achievements">' + achievements.map(function (r) {
+          var medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : "#" + r.rank;
+          return '<button class="ach" data-event="' + esc(r.events.id) + '"><span class="medal">' + medal + "</span><span><strong>" + esc(r.events.title) + "</strong><small>" +
+            esc(new Date(r.events.starts_at).toLocaleDateString("en-GB", { month: "short", year: "numeric" })) + (r.note ? " · " + esc(r.note) : "") + "</small></span></button>";
+        }).join("") + "</div>"
+      : "";
     var clapsEarned = rows.reduce(function (n, p) { return n + (p.claps ? p.claps.length : 0); }, 0);
 
     var teamHtml = teams.length
@@ -741,7 +753,7 @@
             (prof.nationality ? "<span>" + esc(prof.nationality) + "</span>" : "") +
             (prof.residence && prof.residence !== prof.nationality ? "<span>Lives in " + esc(prof.residence) + "</span>" : "") +
           "</p>" +
-          teamHtml +
+          teamHtml + achHtml +
           (prof.about ? '<p class="profile-about">' + esc(prof.about) + "</p>" : (isMe ? '<p class="profile-about is-empty">Add a line about yourself.</p>' : "")) +
           '<div class="profile-stats">' +
             "<div><strong>" + rows.length + "</strong><span>posts</span></div>" +
@@ -772,6 +784,9 @@
 
     page.querySelectorAll(".team-badge").forEach(function (b) {
       b.addEventListener("click", function () { show("team", b.dataset.team); });
+    });
+    page.querySelectorAll(".ach").forEach(function (b) {
+      b.addEventListener("click", function () { show("event", b.dataset.event); });
     });
     var go = $("go-teams"); if (go) go.addEventListener("click", function () { show("teams"); });
     var sup = $("btn-support");
@@ -1074,6 +1089,319 @@
       row.querySelector(".avatar").addEventListener("click", function () {
         $("profile-back").hidden = false; $("profile-back").dataset.back = "teams";
         show("profile", uid);
+      });
+    });
+  }
+
+  // ---------- events ----------
+  var EVENT_KINDS = {
+    competition: { label: "Competition", icon: "🏆" },
+    training:    { label: "Training",    icon: "🏋️" },
+    bootcamp:    { label: "Bootcamp",    icon: "🔥" },
+    workshop:    { label: "Workshop",    icon: "🎨" },
+    tryout:      { label: "Tryout",      icon: "🎯" },
+    showcase:    { label: "Showcase",    icon: "🎤" }
+  };
+  var BRACKET_SHORT = { U12: "Under 12", U15: "Under 15", U18: "Under 18", OPEN: "18+" };
+  function kindChip(kind) {
+    var k = EVENT_KINDS[kind] || { label: kind, icon: "" };
+    return '<span class="chip chip-kind chip-kind-' + esc(kind) + '">' + k.icon + " " + esc(k.label) + "</span>";
+  }
+  function fmtWhen(startIso, endIso) {
+    var s = new Date(startIso);
+    var opts = { weekday: "short", day: "numeric", month: "short" };
+    var day = s.toLocaleDateString("en-GB", opts);
+    var time = s.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    var out = day + " · " + time;
+    if (endIso) {
+      var e = new Date(endIso);
+      out += e.toDateString() === s.toDateString()
+        ? "–" + e.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+        : " → " + e.toLocaleDateString("en-GB", opts);
+    }
+    return out;
+  }
+  function fmtFee(kwd) { return (+kwd || 0) > 0 ? "KD " + (+kwd).toFixed((+kwd) % 1 ? 3 : 0).replace(/\.?0+$/, "") : "Free"; }
+  function isPast(ev) { return new Date(ev.ends_at || ev.starts_at).getTime() < Date.now() - 3600000; }
+  function toLocalInput(iso) {
+    if (!iso) return "";
+    var d = new Date(iso); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().slice(0, 16);
+  }
+
+  var allEvents = [], eventKind = "", eventWhen = "upcoming";
+  function eventCard(ev) {
+    var going = (ev.event_registrations || []).filter(function (r) { return r.status === "going"; }).length;
+    var el = document.createElement("button");
+    el.className = "card event-card" + (ev.status === "cancelled" ? " is-cancelled" : "");
+    el.innerHTML =
+      (ev.cover_url ? '<img class="event-cover-sm" src="' + esc(ev.cover_url) + '" alt="">' : '<div class="event-date-sm"><strong>' + new Date(ev.starts_at).getDate() + "</strong><span>" + new Date(ev.starts_at).toLocaleDateString("en-GB", { month: "short" }) + "</span></div>") +
+      '<div class="team-card-body">' +
+        "<div>" + kindChip(ev.kind) + (ev.status === "cancelled" ? ' <span class="chip chip-pending">Cancelled</span>' : "") + "</div>" +
+        "<strong>" + esc(ev.title) + "</strong>" +
+        "<small>" + esc(fmtWhen(ev.starts_at, ev.ends_at)) + "</small>" +
+        "<small>" + [ev.skill, ev.city].filter(Boolean).map(esc).join(" · ") + "</small>" +
+        "<small>" + going + " going · " + esc(fmtFee(ev.fee_kwd)) + (ev.capacity ? " · " + Math.max(0, ev.capacity - going) + " places left" : "") + "</small>" +
+      "</div>";
+    el.addEventListener("click", function () { show("event", ev.id); });
+    return el;
+  }
+  function renderEvents() {
+    var q = ($("event-search").value || "").toLowerCase();
+    var list = $("event-list"); list.innerHTML = "";
+    var rows = allEvents.filter(function (ev) {
+      if (eventKind && ev.kind !== eventKind) return false;
+      if (eventWhen === "upcoming" && (isPast(ev) || ev.status === "cancelled")) return false;
+      if (eventWhen === "past" && !isPast(ev)) return false;
+      if (eventWhen === "mine" && !(me && (ev.organiser_id === me.id || (ev.event_registrations || []).some(function (r) { return r.user_id === me.id; })))) return false;
+      return !q || (ev.title + " " + ev.skill + " " + ev.city + " " + ev.venue).toLowerCase().indexOf(q) !== -1;
+    });
+    if (eventWhen === "past") rows.reverse();
+    $("events-empty").textContent = eventWhen === "mine" ? "Nothing yet. Register for an event or add your own." : (eventWhen === "past" ? "No past events." : "No upcoming events. Add the first one.");
+    $("events-empty").hidden = rows.length > 0;
+    rows.forEach(function (ev) { list.appendChild(eventCard(ev)); });
+  }
+  async function loadEvents() {
+    var res = await sb.from("events").select("*, event_registrations(user_id, status)").order("starts_at", { ascending: true }).limit(200);
+    allEvents = res.data || [];
+    renderEvents();
+  }
+  $("event-search").addEventListener("input", renderEvents);
+  $("event-kinds").addEventListener("click", function (e) {
+    var b = e.target.closest(".filter-chip"); if (!b) return;
+    eventKind = b.dataset.kind;
+    $("event-kinds").querySelectorAll(".filter-chip").forEach(function (c) { c.classList.toggle("is-on", c === b); });
+    renderEvents();
+  });
+  $("event-when").addEventListener("click", function (e) {
+    var b = e.target.closest(".seg-btn"); if (!b) return;
+    eventWhen = b.dataset.when;
+    $("event-when").querySelectorAll(".seg-btn").forEach(function (c) { c.classList.toggle("is-on", c === b); });
+    renderEvents();
+  });
+
+  // create / edit event sheet
+  var eventForm = $("form-event");
+  var eventCoverFile = null;
+  async function openEventSheet(ev) {
+    eventForm.reset(); eventCoverFile = null;
+    $("event-cover-name").textContent = "Add a cover photo (optional)";
+    eventForm.querySelector('[data-msg="event"]').textContent = "";
+    $("event-sheet-title").textContent = ev ? "Edit event" : "Add an event";
+    $("btn-save-event").textContent = ev ? "Save changes" : "Publish event";
+    // teams I run
+    var mine = await sb.from("teams").select("id, name").eq("admin_id", me.id).order("name");
+    eventForm.team_id.innerHTML = '<option value="">Just me</option>' + (mine.data || []).map(function (t) {
+      return '<option value="' + esc(t.id) + '">' + esc(t.name) + "</option>";
+    }).join("");
+    if (ev) {
+      eventForm.id.value = ev.id;
+      var r = eventForm.querySelector('input[name="kind"][value="' + ev.kind + '"]'); if (r) r.checked = true;
+      eventForm.title.value = ev.title; eventForm.skill.value = ev.skill || ""; eventForm.city.value = ev.city || "";
+      eventForm.venue.value = ev.venue || ""; eventForm.starts_at.value = toLocalInput(ev.starts_at); eventForm.ends_at.value = toLocalInput(ev.ends_at);
+      eventForm.querySelectorAll('input[name="brackets"]').forEach(function (c) { c.checked = (ev.brackets || []).indexOf(c.value) !== -1; });
+      eventForm.fee_kwd.value = ev.fee_kwd || 0; eventForm.capacity.value = ev.capacity || "";
+      eventForm.team_id.value = ev.team_id || ""; eventForm.description.value = ev.description || "";
+    } else {
+      eventForm.id.value = "";
+      eventForm.skill.value = myProfile.skill || ""; eventForm.city.value = myProfile.city || "";
+      var d = new Date(); d.setDate(d.getDate() + 7); d.setHours(17, 0, 0, 0);
+      eventForm.starts_at.value = toLocalInput(d.toISOString());
+    }
+    openSheet("sheet-event");
+  }
+  $("btn-new-event").addEventListener("click", function () { openEventSheet(null); });
+  eventForm.cover.addEventListener("change", function () {
+    var f = eventForm.cover.files[0]; if (!f) return;
+    if (f.size > 8 * 1024 * 1024) { eventForm.querySelector('[data-msg="event"]').textContent = "Cover must be under 8MB."; eventForm.cover.value = ""; return; }
+    eventCoverFile = f; $("event-cover-name").textContent = f.name;
+  });
+  eventForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var msg = eventForm.querySelector('[data-msg="event"]');
+    var kind = (eventForm.querySelector('input[name="kind"]:checked') || {}).value;
+    if (!kind) { msg.textContent = "Pick the kind of event."; return; }
+    var starts = new Date(eventForm.starts_at.value), ends = eventForm.ends_at.value ? new Date(eventForm.ends_at.value) : null;
+    if (isNaN(starts.getTime())) { msg.textContent = "Set a start date and time."; return; }
+    if (ends && ends < starts) { msg.textContent = "The end must be after the start."; return; }
+    msg.textContent = "Saving…";
+    try {
+      var row = {
+        kind: kind,
+        title: eventForm.title.value.trim(),
+        skill: canonSkill(eventForm.skill.value),
+        city: eventForm.city.value.trim(),
+        venue: eventForm.venue.value.trim(),
+        starts_at: starts.toISOString(),
+        ends_at: ends ? ends.toISOString() : null,
+        brackets: Array.prototype.map.call(eventForm.querySelectorAll('input[name="brackets"]:checked'), function (c) { return c.value; }),
+        fee_kwd: +eventForm.fee_kwd.value || 0,
+        capacity: eventForm.capacity.value ? +eventForm.capacity.value : null,
+        team_id: eventForm.team_id.value || null,
+        description: eventForm.description.value.trim()
+      };
+      if (eventCoverFile) row.cover_url = await uploadFile(eventCoverFile, "event");
+      var r, id = eventForm.id.value;
+      if (id) { r = await sb.from("events").update(row).eq("id", id).select().single(); }
+      else { row.organiser_id = me.id; r = await sb.from("events").insert(row).select().single(); }
+      if (r.error) throw r.error;
+      if (!id) await sb.from("event_registrations").insert({ event_id: r.data.id, user_id: me.id, status: "going" });
+      closeSheet("sheet-event");
+      show("event", r.data.id);
+    } catch (err) { msg.textContent = err.message || "Couldn't save the event."; }
+  });
+
+  // result sheet
+  var resultForm = $("form-result");
+  resultForm.addEventListener("submit", async function (e) {
+    e.preventDefault();
+    var msg = resultForm.querySelector('[data-msg="result"]');
+    msg.textContent = "Saving…";
+    var r = await sb.from("event_results").upsert({
+      event_id: resultForm.event_id.value, user_id: resultForm.user_id.value,
+      rank: +resultForm.rank.value, note: resultForm.note.value.trim()
+    });
+    if (r.error) { msg.textContent = r.error.message; return; }
+    closeSheet("sheet-result");
+    show("event", resultForm.event_id.value);
+  });
+
+  // event page
+  async function loadEvent(eventId) {
+    var page = $("event-page");
+    page.innerHTML = '<p class="empty">Loading…</p>';
+    var res = await sb.from("events")
+      .select("*, profiles!events_organiser_id_fkey(id, name, username, avatar_url), teams(id, name, logo_url), " +
+              "event_registrations(user_id, status, attended, created_at, profiles(name, username, avatar_url, skill, age_bracket)), " +
+              "event_results(user_id, rank, note, profiles(name, username, avatar_url))")
+      .eq("id", eventId).maybeSingle();
+    var ev = res.data;
+    if (!ev) { page.innerHTML = '<p class="empty">Event not found.' + (res.error ? " " + esc(res.error.message) : "") + "</p>"; return; }
+    var regs = (ev.event_registrations || []).sort(function (a, b) { return a.created_at < b.created_at ? -1 : 1; });
+    var going = regs.filter(function (r) { return r.status === "going"; });
+    var waitlist = regs.filter(function (r) { return r.status === "waitlist"; });
+    var mine = regs.find(function (r) { return me && r.user_id === me.id; });
+    var isOrg = me && ev.organiser_id === me.id;
+    var past = isPast(ev), cancelled = ev.status === "cancelled";
+    var full = ev.capacity && going.length >= ev.capacity;
+    var results = (ev.event_results || []).sort(function (a, b) { return a.rank - b.rank; });
+    var eligible = !ev.brackets || !ev.brackets.length || !myProfile || !myProfile.age_bracket || ev.brackets.indexOf(myProfile.age_bracket) !== -1;
+
+    var action = "";
+    if (cancelled) action = '<span class="chip chip-pending">This event was cancelled</span>';
+    else if (isOrg) action = '<span class="chip chip-admin">You organise this event</span>';
+    else if (past) action = mine ? '<span class="chip chip-member">' + (mine.attended ? "You took part ✓" : "You were registered") + "</span>" : '<span class="chip chip-pending">This event has ended</span>';
+    else if (mine && mine.status === "going") action = '<span class="chip chip-member">You\'re going ✓</span> <button class="linklike" id="ev-withdraw">Withdraw</button>';
+    else if (mine) action = '<span class="chip chip-pending">On the waitlist (#' + (waitlist.findIndex(function (r) { return r.user_id === me.id; }) + 1) + ')</span> <button class="linklike" id="ev-withdraw">Leave waitlist</button>';
+    else if (!eligible) action = '<span class="chip chip-pending">For ' + ev.brackets.map(function (b) { return BRACKET_SHORT[b] || b; }).join(", ") + " only</span>";
+    else action = '<button class="btn btn-primary btn-small" id="ev-register">' + (full ? "Join the waitlist" : (ev.kind === "competition" ? "Enter competition" : "Register")) + "</button>";
+
+    function regRow(r) {
+      var p = r.profiles || {};
+      return '<div class="member" data-user="' + esc(r.user_id) + '">' +
+        avatarHtml(p, "avatar-sm") +
+        '<div class="member-body"><strong>' + esc(p.name || "Member") + "</strong>" +
+        "<small>" + (p.username ? "@" + esc(p.username) : "") + (p.skill ? " · " + esc(p.skill) : "") + (p.age_bracket ? " · " + esc(bracketLabel(p.age_bracket)) : "") + "</small></div>" +
+        (isOrg && !cancelled
+          ? (r.status === "waitlist"
+              ? '<button class="btn btn-small btn-primary act-promote">Admit</button>'
+              : '<label class="attend"><input type="checkbox" class="act-attend"' + (r.attended ? " checked" : "") + "> Attended</label>") +
+            '<button class="linklike act-remove" aria-label="Remove">×</button>'
+          : (r.attended ? '<span class="chip chip-member">✓</span>' : "")) +
+      "</div>";
+    }
+    function resultRow(r) {
+      var p = r.profiles || {};
+      var medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : "#" + r.rank;
+      return '<div class="member result-row" data-user="' + esc(r.user_id) + '">' +
+        '<span class="medal">' + medal + "</span>" + avatarHtml(p, "avatar-sm") +
+        '<div class="member-body"><strong>' + esc(p.name || "Member") + "</strong><small>" + (p.username ? "@" + esc(p.username) : "") + (r.note ? " · " + esc(r.note) : "") + "</small></div>" +
+        (isOrg ? '<button class="linklike act-unresult" aria-label="Remove result">×</button>' : "") +
+      "</div>";
+    }
+    var org = ev.profiles || {};
+    page.innerHTML =
+      '<section class="card event-head">' +
+        (ev.cover_url ? '<img class="event-cover" src="' + esc(ev.cover_url) + '" alt="">' : '<div class="event-cover event-cover-empty">' + (EVENT_KINDS[ev.kind] || {}).icon + "</div>") +
+        '<div class="event-body">' +
+          "<div>" + kindChip(ev.kind) + (ev.skill ? ' <span class="chip chip-skill">' + esc(ev.skill) + "</span>" : "") + "</div>" +
+          '<h2 class="event-title">' + esc(ev.title) + "</h2>" +
+          '<ul class="event-facts">' +
+            "<li>📅 " + esc(fmtWhen(ev.starts_at, ev.ends_at)) + "</li>" +
+            (ev.venue || ev.city ? "<li>📍 " + esc([ev.venue, ev.city].filter(Boolean).join(", ")) + "</li>" : "") +
+            "<li>🎟️ " + esc(fmtFee(ev.fee_kwd)) + (ev.capacity ? " · " + going.length + " / " + ev.capacity + " places" : " · " + going.length + " going") + "</li>" +
+            (ev.brackets && ev.brackets.length ? "<li>👥 " + esc(ev.brackets.map(function (b) { return BRACKET_SHORT[b] || b; }).join(", ")) + "</li>" : "<li>👥 All ages</li>") +
+          "</ul>" +
+          '<button class="event-org" id="ev-org">' + avatarHtml(ev.teams ? { name: ev.teams.name, avatar_url: ev.teams.logo_url } : org, "avatar-xs" + (ev.teams ? " avatar-team" : "")) +
+            "<span>Organised by <strong>" + esc(ev.teams ? ev.teams.name : org.name) + "</strong>" + (ev.teams ? " · " + esc(org.name) : "") + "</span></button>" +
+          (ev.description ? '<p class="event-desc">' + esc(ev.description) + "</p>" : "") +
+          '<div class="profile-actions">' + action +
+            (isOrg && !cancelled ? '<button class="btn btn-ghost btn-small" id="ev-edit">Edit</button>' + (!past ? '<button class="linklike" id="ev-cancel">Cancel event</button>' : "") : "") +
+          "</div>" +
+        "</div>" +
+      "</section>" +
+      (results.length || (isOrg && ev.kind === "competition" && past && !cancelled)
+        ? '<h3 class="section-title">Results' + (isOrg && !cancelled ? ' <button class="linklike" id="ev-add-result">+ Add result</button>' : "") + "</h3>" +
+          '<div class="card member-list">' + (results.length ? results.map(resultRow).join("") : '<p class="empty">No results yet. Add the podium.</p>') + "</div>"
+        : (isOrg && !cancelled && regs.length ? '<p class="event-hint"><button class="linklike" id="ev-add-result">+ Add a result</button> once the event is done — it appears on the talent\'s profile.</p>' : "")) +
+      '<h3 class="section-title">' + (past ? "Took part" : "Going") + ' <span class="count">' + going.length + "</span></h3>" +
+      '<div class="card member-list">' + (going.length ? going.map(regRow).join("") : '<p class="empty">Nobody yet. Be the first.</p>') + "</div>" +
+      (waitlist.length ? '<h3 class="section-title">Waitlist <span class="count">' + waitlist.length + "</span></h3>" +
+          '<div class="card member-list">' + waitlist.map(regRow).join("") + "</div>" : "");
+
+    var reg = $("ev-register");
+    if (reg) reg.addEventListener("click", async function () {
+      reg.disabled = true;
+      var r = await sb.from("event_registrations").insert({ event_id: ev.id, user_id: me.id, status: full ? "waitlist" : "going" });
+      if (r.error) { reg.disabled = false; reg.textContent = "Couldn't register — try again"; return; }
+      loadEvent(ev.id);
+    });
+    var wd = $("ev-withdraw");
+    if (wd) wd.addEventListener("click", async function () {
+      await sb.from("event_registrations").delete().match({ event_id: ev.id, user_id: me.id });
+      loadEvent(ev.id);
+    });
+    var ed = $("ev-edit"); if (ed) ed.addEventListener("click", function () { openEventSheet(ev); });
+    var cx = $("ev-cancel");
+    if (cx) cx.addEventListener("click", async function () {
+      if (cx.dataset.sure !== "1") { cx.dataset.sure = "1"; cx.textContent = "Tap again to confirm cancellation"; return; }
+      await sb.from("events").update({ status: "cancelled" }).eq("id", ev.id);
+      loadEvent(ev.id);
+    });
+    var ar = $("ev-add-result");
+    if (ar) ar.addEventListener("click", function () {
+      resultForm.reset();
+      resultForm.event_id.value = ev.id;
+      resultForm.user_id.innerHTML = going.map(function (r) {
+        var p = r.profiles || {};
+        return '<option value="' + esc(r.user_id) + '">' + esc(p.name) + (p.username ? " (@" + esc(p.username) + ")" : "") + "</option>";
+      }).join("");
+      resultForm.rank.value = results.length + 1;
+      resultForm.querySelector('[data-msg="result"]').textContent = "";
+      openSheet("sheet-result");
+    });
+    $("ev-org").addEventListener("click", function () {
+      if (ev.teams) show("team", ev.teams.id);
+      else { $("profile-back").hidden = false; $("profile-back").dataset.back = "events"; show("profile", ev.organiser_id); }
+    });
+    page.querySelectorAll(".member").forEach(function (row) {
+      var uid = row.dataset.user;
+      var at = row.querySelector(".act-attend"), rm = row.querySelector(".act-remove"), pr = row.querySelector(".act-promote"), ur = row.querySelector(".act-unresult");
+      if (at) at.addEventListener("change", function () {
+        sb.from("event_registrations").update({ attended: at.checked }).match({ event_id: ev.id, user_id: uid });
+      });
+      if (rm) rm.addEventListener("click", async function () {
+        await sb.from("event_registrations").delete().match({ event_id: ev.id, user_id: uid }); loadEvent(ev.id);
+      });
+      if (pr) pr.addEventListener("click", async function () {
+        await sb.from("event_registrations").update({ status: "going" }).match({ event_id: ev.id, user_id: uid }); loadEvent(ev.id);
+      });
+      if (ur) ur.addEventListener("click", async function () {
+        await sb.from("event_results").delete().match({ event_id: ev.id, user_id: uid }); loadEvent(ev.id);
+      });
+      var av = row.querySelector(".avatar");
+      if (av) av.addEventListener("click", function () {
+        $("profile-back").hidden = false; $("profile-back").dataset.back = "events"; show("profile", uid);
       });
     });
   }

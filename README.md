@@ -81,6 +81,7 @@ Notes:
 | `supabase/migration-004-signup-fields.sql` | DOB/gender/nationality/residence + private contact table (applied) |
 | `supabase/migration-005-support.sql` | Support (one-way follow) (applied) |
 | `supabase/migration-006-guardian.sql` | Ages 3+, guardian-managed flag for under-13s (applied) |
+| `supabase/migration-007-events.sql` | Events (competitions, training, bootcamps, workshops, tryouts, showcases), registrations with waitlist, results (applied) |
 | `supabase/seed-demo.sql` | 12 fictional demo talents with posts, claps, comments, supports, 2 teams (applied; re-runnable; login `<username>@demo.halba.app` / `Halba2026!`; remove with `delete from auth.users where email like '%@demo.halba.app'`) |
 | `manifest.webmanifest` / `sw.js` / `icons/` | PWA: installable, instant-open |
 | `capacitor.config.json` / `package.json` / `scripts/copy-www.js` | Android wrapper |
@@ -97,6 +98,7 @@ Notes:
 - Support (one-way follow): Support button on profiles, supporters / supporting counts, tap to see the list
 - Arena tools: search people by name, @username or talent; filter the feed by talent (list of talents members actually use, with counts)
 - Talent suggestions while typing (signup, edit profile, create team): talents already on HALBA first, then a list of common ones; spelling is normalised so filters group correctly
+- Events: anyone adds a competition / training session / bootcamp / workshop / tryout / showcase (date, venue, age groups, fee, places, cover, optional team); people register or join the waitlist; organiser sees the list, marks attendance, admits from the waitlist, records results (podium + time/score) which appear on each talent's profile as achievements; Upcoming / Past / Mine views, filter by kind, search
 - About HALBA page (from login screen and profile)
 - Profile page with post count and likes earned
 - Row-level security: users can only write as themselves; everyone can read

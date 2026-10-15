@@ -148,4 +148,95 @@ begin
     (pid, (u->>'ahmed_draws')::uuid,   'approved', 'member', now() - interval '4 days', now() - interval '4 days');
 end $$;
 
+-- ---------- demo events (needs migration 007) ----------
+delete from public.events where title in ('HALBA Launch Sprint — 100m');
+do $$
+declare
+  u jsonb;
+  founder uuid;
+  sharks uuid; chessclub uuid;
+  eid uuid;
+begin
+  select jsonb_object_agg(username, id) into u from public.profiles where is_demo;
+  select id into founder from public.profiles where username = 'salih';
+  if founder is null then founder := (u->>'noura_swims')::uuid; end if;
+  select id into sharks from public.teams where handle = 'salmiya_sharks';
+  select id into chessclub from public.teams where handle = 'hawalli_chess';
+
+  -- 1. competition in 9 days, run by the Sharks
+  eid := gen_random_uuid();
+  insert into public.events (id, organiser_id, team_id, kind, title, skill, city, venue, starts_at, ends_at, description, brackets, fee_kwd, capacity)
+  values (eid, (u->>'noura_swims')::uuid, sharks, 'competition', 'Salmiya 50m Sprint Challenge', 'Swimming', 'Salmiya', 'Salmiya Sports Club pool',
+    date_trunc('day', now()) + interval '9 days 16 hours', date_trunc('day', now()) + interval '9 days 19 hours',
+    '50m freestyle, 50m backstroke and 50m fly. Electronic timing. Medals for the top 3 in each age group, and every time goes on your HALBA profile.
+
+Bring: swim cap, goggles, towel, your parent for the under-12s.', '{U12,U15}', 2, 24);
+  insert into public.event_registrations (event_id, user_id, status, created_at) values
+    (eid, (u->>'noura_swims')::uuid, 'going', now() - interval '6 days'),
+    (eid, (u->>'dana_gym')::uuid, 'going', now() - interval '5 days'),
+    (eid, (u->>'omar_runs')::uuid, 'going', now() - interval '4 days'),
+    (eid, (u->>'sara_hoops')::uuid, 'going', now() - interval '2 days');
+
+  -- 2. training in 3 days, chess club
+  eid := gen_random_uuid();
+  insert into public.events (id, organiser_id, team_id, kind, title, skill, city, venue, starts_at, ends_at, description, fee_kwd)
+  values (eid, (u->>'fatima_chess')::uuid, chessclub, 'training', 'Saturday Blitz Training', 'Chess', 'Hawalli', 'Hawalli Youth Centre, room 2',
+    date_trunc('day', now()) + interval '3 days 10 hours', date_trunc('day', now()) + interval '3 days 12 hours',
+    '3+2 blitz, Swiss pairing, then we go through two games on the demo board. Beginners welcome — bring a clock if you have one.', 0);
+  insert into public.event_registrations (event_id, user_id, status, created_at) values
+    (eid, (u->>'fatima_chess')::uuid, 'going', now() - interval '4 days'),
+    (eid, (u->>'khalid_robots')::uuid, 'going', now() - interval '3 days'),
+    (eid, (u->>'ahmed_draws')::uuid, 'going', now() - interval '1 day');
+
+  -- 3. bootcamp in 20 days
+  eid := gen_random_uuid();
+  insert into public.events (id, organiser_id, kind, title, skill, city, venue, starts_at, ends_at, description, brackets, fee_kwd, capacity)
+  values (eid, (u->>'yousef10')::uuid, 'bootcamp', 'Jahra Winter Football Bootcamp', 'Football', 'Jahra', 'Jahra Sports Club, pitch 2',
+    date_trunc('day', now()) + interval '20 days 15 hours', date_trunc('day', now()) + interval '22 days 18 hours',
+    'Three afternoons: first touch, 1v1, finishing. Last day is a small-sided tournament with a scout from the club academy watching.', '{U15,U18}', 5, 40);
+  insert into public.event_registrations (event_id, user_id, status, created_at) values
+    (eid, (u->>'yousef10')::uuid, 'going', now() - interval '3 days'),
+    (eid, (u->>'omar_runs')::uuid, 'going', now() - interval '2 days'),
+    (eid, (u->>'khalid_robots')::uuid, 'going', now() - interval '1 day');
+
+  -- 4. workshop in 12 days, small capacity
+  eid := gen_random_uuid();
+  insert into public.events (id, organiser_id, kind, title, skill, city, venue, starts_at, ends_at, description, fee_kwd, capacity)
+  values (eid, (u->>'maryam_khat')::uuid, 'workshop', 'Thuluth for Beginners', 'Calligraphy', 'Mangaf', 'Mangaf Public Library',
+    date_trunc('day', now()) + interval '12 days 17 hours', date_trunc('day', now()) + interval '12 days 19 hours',
+    'Holding the qalam, the first six letters, and one word to take home. Paper and ink provided.', 0, 12);
+  insert into public.event_registrations (event_id, user_id, status, created_at) values
+    (eid, (u->>'maryam_khat')::uuid, 'going', now() - interval '5 days'),
+    (eid, (u->>'ahmed_draws')::uuid, 'going', now() - interval '4 days'),
+    (eid, (u->>'hamza_quran')::uuid, 'going', now() - interval '3 days'),
+    (eid, (u->>'lina_gg')::uuid, 'going', now() - interval '1 day');
+
+  -- 5. tryout in 6 days
+  eid := gen_random_uuid();
+  insert into public.events (id, organiser_id, kind, title, skill, city, venue, starts_at, ends_at, description, brackets, fee_kwd)
+  values (eid, (u->>'sara_hoops')::uuid, 'tryout', 'Fahaheel Girls Basketball Tryouts', 'Basketball', 'Fahaheel', 'Fahaheel indoor court',
+    date_trunc('day', now()) + interval '6 days 17 hours', date_trunc('day', now()) + interval '6 days 19 hours',
+    'Open tryout for the Fahaheel girls league team. Drills, then 5v5. Coach picks 8 players.', '{U15,U18}', 0);
+  insert into public.event_registrations (event_id, user_id, status, created_at) values
+    (eid, (u->>'sara_hoops')::uuid, 'going', now() - interval '3 days'),
+    (eid, (u->>'lina_gg')::uuid, 'going', now() - interval '2 days'),
+    (eid, (u->>'noura_swims')::uuid, 'going', now() - interval '1 day');
+
+  -- 6. past competition with results (organised by the founder account)
+  eid := gen_random_uuid();
+  insert into public.events (id, organiser_id, kind, title, skill, city, venue, starts_at, ends_at, description, brackets, fee_kwd)
+  values (eid, founder, 'competition', 'HALBA Launch Sprint — 100m', 'Running', 'Salmiya', 'Salmiya school track',
+    date_trunc('day', now()) - interval '10 days' + interval '9 hours', date_trunc('day', now()) - interval '10 days' + interval '11 hours',
+    'The first HALBA competition: 100m sprint, hand-timed, three heats and a final.', '{U15,U18}', 0);
+  insert into public.event_registrations (event_id, user_id, status, attended, created_at) values
+    (eid, (u->>'omar_runs')::uuid, 'going', true, now() - interval '15 days'),
+    (eid, (u->>'yousef10')::uuid, 'going', true, now() - interval '14 days'),
+    (eid, (u->>'khalid_robots')::uuid, 'going', true, now() - interval '13 days'),
+    (eid, (u->>'abdullah_oud')::uuid, 'going', false, now() - interval '12 days');
+  insert into public.event_results (event_id, user_id, rank, note) values
+    (eid, (u->>'omar_runs')::uuid, 1, '12.9s'),
+    (eid, (u->>'yousef10')::uuid, 2, '13.4s'),
+    (eid, (u->>'khalid_robots')::uuid, 3, '14.0s');
+end $$;
+
 select count(*) as demo_profiles from public.profiles where is_demo;
