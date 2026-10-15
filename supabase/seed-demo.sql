@@ -74,7 +74,7 @@ begin
     ('abdullah_oud', 'First full taqsim in maqam Hijaz without stopping. Three months of practice for four minutes of music. Worth it.', img_oud, 4),
     ('maryam_khat',  'Thuluth practice: "العلم نور". Still fighting the letter ع — it never sits right on the first try.', img_khat, 5),
     ('omar_runs',    '100m in 12.9s at school sports day. Last year it was 14.1. Next target: under 12.5 before summer.', img_track, 6),
-    ('lina_gg',      'Top 8 in the Kuwait schools esports cup. First all-girls team to reach the quarter-finals. We are not done. 🎮', img_game, 7),
+    ('lina_gg',      'Top 8 in the Kuwait schools Valorant cup. First all-girls team to reach the quarter-finals. We are not done. 🎮', img_game, 7),
     ('ahmed_draws',  'Portrait of my cousin — she sat for me for an hour, the rest was from a photo. Pencil on A3, about six hours over two weekends. She said the eyes are right.', img_draw, 8),
     ('sara_hoops',   '22 points in the Fahaheel league semi-final, 7 of 9 from three. Final is next Friday. 🏀', img_hoop, 9),
     ('hamza_quran',  'Recited Juz'' Amma from memory in front of the whole school assembly today. My father cried. Now starting Juz'' Tabarak. 🤲', null, 10),
