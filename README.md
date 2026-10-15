@@ -82,6 +82,7 @@ Notes:
 | `supabase/migration-005-support.sql` | Support (one-way follow) (applied) |
 | `supabase/migration-006-guardian.sql` | Ages 3+, guardian-managed flag for under-13s (applied) |
 | `supabase/migration-007-events.sql` | Events (competitions, training, bootcamps, workshops, tryouts, showcases), registrations with waitlist, results (applied) |
+| `supabase/migration-008-posts-update.sql` | Owners can edit their own posts (applied) |
 | `supabase/seed-demo.sql` | 12 fictional demo talents with posts, claps, comments, supports, 2 teams (applied; re-runnable; login `<username>@demo.halba.app` / `Halba2026!`; remove with `delete from auth.users where email like '%@demo.halba.app'`) |
 | `manifest.webmanifest` / `sw.js` / `icons/` | PWA: installable, instant-open |
 | `capacitor.config.json` / `package.json` / `scripts/copy-www.js` | Android wrapper |
